@@ -1,0 +1,132 @@
+﻿<UserControl x:Class="ERGLauncher.Views.AddBrandView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:gu="http://gu.se/Localization"
+             xmlns:views="clr-namespace:ERGLauncher.Views"
+             xmlns:properties="clr-namespace:ERGLauncher.Properties"
+             mc:Ignorable="d" 
+             d:DesignHeight="300"
+             d:DesignWidth="300"
+             Height="{Binding Path=Height.Value,
+                              Mode=TwoWay,
+                              UpdateSourceTrigger=PropertyChanged}"
+             Width="{Binding Path=Width.Value,
+                             Mode=TwoWay,
+                             UpdateSourceTrigger=PropertyChanged}"
+             prism:ViewModelLocator.AutoWireViewModel="True">
+    <prism:Dialog.WindowStyle>
+        <Style TargetType="{x:Type views:DialogBase}">
+            <Setter Property="Title"
+                    Value="{gu:Static properties:Resources.AddBrand}" />
+
+            <Setter Property="ShowInTaskbar"
+                    Value="False" />
+
+            <Setter Property="ResizeMode"
+                    Value="NoResize" />
+
+            <Setter Property="SizeToContent"
+                    Value="WidthAndHeight" />
+
+            <Setter Property="GlowBrush"
+                    Value="{DynamicResource MahApps.Brushes.WindowTitle}" />
+        </Style>
+    </prism:Dialog.WindowStyle>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="70" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="60" />
+        </Grid.RowDefinitions>
+
+        <TextBox Grid.Row="0"
+                 Style="{DynamicResource MaterialDesignFloatingHintTextBox}"
+                 FontSize="15"
+                 materialDesign:HintAssist.Hint="{gu:Static properties:Resources.BrandName}"
+                 materialDesign:HintAssist.FloatingScale="0.9"
+                 VerticalAlignment="Center"
+                 HorizontalAlignment="Stretch"
+                 VerticalContentAlignment="Center"
+                 HorizontalContentAlignment="Left"
+                 Text="{Binding Path=Name.Value,
+                                Mode=TwoWay,
+                                UpdateSourceTrigger=PropertyChanged}"
+                 Margin="10" />
+
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0"
+                       Text="{gu:Static properties:Resources.Icon}"
+                       Foreground="{DynamicResource MahApps.Brushes.Text}"
+                       VerticalAlignment="Bottom"
+                       HorizontalAlignment="Left"
+                       Margin="10, 0" />
+
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="90" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        BorderBrush="DimGray"
+                        BorderThickness="1"
+                        Height="110"
+                        Width="110"
+                        Margin="10">
+                    <Image Source="{Binding Path=Icon.Value,
+                                            Mode=OneWay,
+                                            UpdateSourceTrigger=PropertyChanged}"
+                           Height="70"
+                           Width="70"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center" />
+                </Border>
+
+                <Button Grid.Column="1"
+                        Content="{materialDesign:PackIcon FolderSearchOutline}"
+                        Command="{Binding Path=SelectIconAsyncCommand,
+                                          Mode=OneWay,
+                                          UpdateSourceTrigger=PropertyChanged}"
+                        Style="{DynamicResource MaterialDesignFlatMidBgButton}"
+                        ToolTip="{gu:Static properties:Resources.OpenIconFile}"
+                        Margin="10" />
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0"
+                    Content="OK"
+                    Command="{Binding Path=AddBrandAsyncCommand,
+                                      Mode=OneWay,
+                                      UpdateSourceTrigger=PropertyChanged}"
+                    Style="{DynamicResource MaterialDesignFlatMidBgButton}"
+                    IsDefault="True"
+                    Margin="10" />
+
+            <Button Grid.Column="1"
+                    Content="Cancel"
+                    Command="{Binding Path=CancelCommand,
+                                      Mode=OneWay,
+                                      UpdateSourceTrigger=PropertyChanged}"
+                    Style="{DynamicResource MaterialDesignFlatButton}"
+                    IsCancel="True"
+                    Margin="10" />
+        </Grid>
+            
+    </Grid>
+</UserControl>
