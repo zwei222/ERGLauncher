@@ -138,117 +138,120 @@
                        Margin="5" />
         </StackPanel>
 
-        <ListBox Grid.Row="1"
-                 ItemsSource="{Binding Source={StaticResource SortedCollection}}"
-                 SelectedItem="{Binding Path=SelectedItem.Value,
-                                        Mode=TwoWay,
-                                        UpdateSourceTrigger=PropertyChanged}"
-                 SelectionMode="Single"
-                 IsTabStop="False"
-                 FocusVisualStyle="{x:Null}">
-            <interactivities:Interaction.Triggers>
-                <interactivities:EventTrigger EventName="MouseLeftButtonUp">
-                    <interactivities:InvokeCommandAction Command="{Binding Path=SelectItemAsyncCommand}" />
-                </interactivities:EventTrigger>
-            </interactivities:Interaction.Triggers>
-
-            <ItemsControl.Template>
-                <ControlTemplate TargetType="{x:Type ItemsControl}">
-                    <Border>
-                        <WrapPanel Margin="10"
-                                   IsItemsHost="True" />
-                    </Border>
-                </ControlTemplate>
-            </ItemsControl.Template>
-
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Grid Height="100"
-                          Width="100"
-                          Margin="10"
-                          ToolTip="{Binding Path=Name,
-                                            Mode=OneWay,
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      materialDesign:ScrollViewerAssist.IsAutoHideEnabled="True">
+            <ListBox ItemsSource="{Binding Source={StaticResource SortedCollection}}"
+                     SelectedItem="{Binding Path=SelectedItem.Value,
+                                            Mode=TwoWay,
                                             UpdateSourceTrigger=PropertyChanged}"
-                          d:DataContext="{d:DesignData Type={x:Type core:Item}}">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="3*" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
+                     SelectionMode="Single"
+                     IsTabStop="False"
+                     FocusVisualStyle="{x:Null}">
+                <interactivities:Interaction.Triggers>
+                    <interactivities:EventTrigger EventName="MouseLeftButtonUp">
+                        <interactivities:InvokeCommandAction Command="{Binding Path=SelectItemAsyncCommand}" />
+                    </interactivities:EventTrigger>
+                </interactivities:Interaction.Triggers>
 
-                        <Image Grid.Row="0"
-                               Source="{Binding Path=Icon,
+                <ItemsControl.Template>
+                    <ControlTemplate TargetType="{x:Type ItemsControl}">
+                        <Border>
+                            <WrapPanel Margin="10"
+                                       IsItemsHost="True" />
+                        </Border>
+                    </ControlTemplate>
+                </ItemsControl.Template>
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Height="100"
+                              Width="100"
+                              Margin="10"
+                              ToolTip="{Binding Path=Name,
                                                 Mode=OneWay,
                                                 UpdateSourceTrigger=PropertyChanged}"
-                               Height="70"
-                               Width="70"
-                               VerticalAlignment="Stretch"
-                               HorizontalAlignment="Stretch" />
+                              d:DataContext="{d:DesignData Type={x:Type core:Item}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="3*" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="1"
-                                   Text="{Binding Path=Name,
-                                                  Mode=OneWay,
-                                                  UpdateSourceTrigger=PropertyChanged}"
-                                   Foreground="{DynamicResource MahApps.Brushes.Text}"
-                                   FontSize="15"
-                                   TextTrimming="CharacterEllipsis"
-                                   TextAlignment="Center"
-                                   TextWrapping="WrapWithOverflow"
-                                   VerticalAlignment="Center"
+                            <Image Grid.Row="0"
+                                   Source="{Binding Path=Icon,
+                                                    Mode=OneWay,
+                                                    UpdateSourceTrigger=PropertyChanged}"
+                                   Height="70"
+                                   Width="70"
+                                   VerticalAlignment="Stretch"
                                    HorizontalAlignment="Stretch" />
-                    </Grid>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
 
-            <ItemsControl.ItemContainerStyle>
-                <Style TargetType="{x:Type ListBoxItem}">
-                    <Setter Property="OverridesDefaultStyle"
-                            Value="True" />
+                            <TextBlock Grid.Row="1"
+                                       Text="{Binding Path=Name,
+                                                      Mode=OneWay,
+                                                      UpdateSourceTrigger=PropertyChanged}"
+                                       Foreground="{DynamicResource MahApps.Brushes.Text}"
+                                       FontSize="15"
+                                       TextTrimming="CharacterEllipsis"
+                                       TextAlignment="Center"
+                                       TextWrapping="WrapWithOverflow"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Stretch" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
 
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="{x:Type ContentControl}">
-                                <Border Background="{TemplateBinding Background}"
-                                        BorderThickness="1"
-                                        BorderBrush="{TemplateBinding BorderBrush}">
-                                    <ContentPresenter IsHitTestVisible="True" />
-                                </Border>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="{x:Type ListBoxItem}">
+                        <Setter Property="OverridesDefaultStyle"
+                                Value="True" />
 
-                    <Setter Property="IsTabStop"
-                            Value="False" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type ContentControl}">
+                                    <Border Background="{TemplateBinding Background}"
+                                            BorderThickness="1"
+                                            BorderBrush="{TemplateBinding BorderBrush}">
+                                        <ContentPresenter IsHitTestVisible="True" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
 
-                    <Setter Property="FocusVisualStyle"
-                            Value="{x:Null}" />
+                        <Setter Property="IsTabStop"
+                                Value="False" />
 
-                    <Style.Triggers>
-                        <Trigger Property="IsSelected"
-                                 Value="True">
-                            <Setter Property="BorderBrush"
-                                    Value="Gray" />
-                        </Trigger>
+                        <Setter Property="FocusVisualStyle"
+                                Value="{x:Null}" />
 
-                        <Trigger Property="IsMouseOver"
-                                 Value="True">
-                            <Setter Property="Background"
-                                    Value="SlateGray" />
-                        </Trigger>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected"
+                                     Value="True">
+                                <Setter Property="BorderBrush"
+                                        Value="Gray" />
+                            </Trigger>
 
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsSelected"
-                                           Value="True" />
-                                <Condition Property="IsMouseOver"
-                                           Value="True" />
-                            </MultiTrigger.Conditions>
+                            <Trigger Property="IsMouseOver"
+                                     Value="True">
+                                <Setter Property="Background"
+                                        Value="SlateGray" />
+                            </Trigger>
 
-                            <Setter Property="Background"
-                                    Value="SlateGray" />
-                        </MultiTrigger>
-                    </Style.Triggers>
-                </Style>
-            </ItemsControl.ItemContainerStyle>
-        </ListBox>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected"
+                                               Value="True" />
+                                    <Condition Property="IsMouseOver"
+                                               Value="True" />
+                                </MultiTrigger.Conditions>
+
+                                <Setter Property="Background"
+                                        Value="SlateGray" />
+                            </MultiTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+            </ListBox>
+        </ScrollViewer>
     </Grid>
 </view:ViewBase>

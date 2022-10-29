@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using Cysharp.Diagnostics;
+using Cysharp.Text;
 using ERGLauncher.Properties;
 using Microsoft.Extensions.Logging;
 using ZLogger;
@@ -122,7 +123,16 @@ namespace ERGLauncher.Services.Implementations
                 throw new FileNotFoundException(this.resourceService.GetCultureString(nameof(Resources.ExecutableFileNotFound)), filePath);
             }
 
-            var (_, stdOut, stdError) = ProcessX.GetDualAsyncEnumerable(fileName: filePath, null, Directory.GetParent(filePath).FullName);
+            using var zstringBuilder = ZString.CreateStringBuilder();
+
+            zstringBuilder.Append("/c \"");
+            zstringBuilder.Append(filePath);
+            zstringBuilder.Append("\"");
+
+            var (_, stdOut, stdError) = ProcessX.GetDualAsyncEnumerable(
+                fileName: "cmd.exe",
+                zstringBuilder.ToString(),
+                Directory.GetParent(filePath).FullName);
             var stdOutTask = Task.Run(async () =>
             {
                 await foreach (var item in stdOut)

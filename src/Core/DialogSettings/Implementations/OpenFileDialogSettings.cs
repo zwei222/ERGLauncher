@@ -21,7 +21,7 @@ namespace ERGLauncher.Core.DialogSettings.Implementations
         /// <summary>
         /// Index of file dialog filters.
         /// </summary>
-        public int FilterIndex { get; set; } = 0;
+        public int FilterIndex { get; set; }
 
         /// <summary>
         /// File name.
@@ -31,7 +31,7 @@ namespace ERGLauncher.Core.DialogSettings.Implementations
         /// <summary>
         /// <see langword="true" /> if multiple files can be selected; otherwise <see langword="false" />.
         /// </summary>
-        public bool CanMultiSelect { get; set; } = false;
+        public bool CanMultiSelect { get; set; }
 
         /// <summary>
         /// File names list.
