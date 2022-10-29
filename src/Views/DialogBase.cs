@@ -14,7 +14,7 @@ namespace ERGLauncher.Views
         public DialogBase()
             : base()
         {
-            if (this.Owner == null && Application.Current.MainWindow != null)
+            if (this.Owner == null && Application.Current.MainWindow != null && Application.Current.MainWindow != this)
             {
                 this.Owner = Application.Current.MainWindow;
             }

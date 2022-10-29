@@ -75,6 +75,7 @@ namespace ERGLauncher
             }
 
             // logger
+#pragma warning disable CA2000 // スコープを失う前にオブジェクトを破棄
             ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
             {
                 builder.ClearProviders();
@@ -88,6 +89,7 @@ namespace ERGLauncher
                     dateTimeOffset => dateTimeOffset.ToLocalTime().Date,
                     1024);
             });
+#pragma warning restore CA2000 // スコープを失う前にオブジェクトを破棄
             var container = containerRegistry.GetContainer();
             var loggerFactoryMethod =
                 typeof(LoggerFactoryExtensions).GetMethod(nameof(LoggerFactoryExtensions.CreateLogger),

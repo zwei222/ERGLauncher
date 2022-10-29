@@ -182,6 +182,7 @@ namespace ERGLauncher.Models.Implementations
                     NegativeButtonText = "Cancel",
                     AnimateHide = true,
                     AnimateShow = true,
+                    DefaultButtonFocus = MessageDialogResult.Affirmative,
                     ColorScheme = MetroDialogColorScheme.Theme,
                 };
                 var result = await this.DialogCoordinator.ShowMessageAsync(
