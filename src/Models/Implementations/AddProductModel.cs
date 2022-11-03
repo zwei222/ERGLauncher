@@ -108,7 +108,7 @@ namespace ERGLauncher.Models.Implementations
 
             if (string.IsNullOrEmpty(this.IconPath))
             {
-                var fileIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath).ToBitmap();
+                var fileIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath)!.ToBitmap();
 
                 this.IconPath = await this.fileService.SaveBitmapAsync(fileIcon).ConfigureAwait(false);
 

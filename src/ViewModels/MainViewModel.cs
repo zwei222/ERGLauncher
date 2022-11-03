@@ -235,42 +235,57 @@ namespace ERGLauncher.ViewModels
         /// <returns>Task</returns>
         private async Task AddItemAsync()
         {
-            IDialogResult? dialogResult = null;
-            string name;
-            string? iconPath;
+            var isCanceled = true;
+            string name = string.Empty;
+            string? iconPath = null;
             string path = string.Empty;
 
             switch (this.CurrentItem.Value)
             {
                 case RootItem _:
-                    this.dialogService.ShowDialog(nameof(AddBrandView), new DialogParameters(), result => dialogResult = result);
-
-                    if (dialogResult?.Result != ButtonResult.OK)
+                    this.dialogService.ShowDialog(nameof(AddBrandView), new DialogParameters(), result =>
                     {
-                        return;
-                    }
+                        var dialogResult = result;
 
-                    var newBrand = dialogResult.Parameters.GetValue<Brand>(nameof(Brand));
+                        if (dialogResult.Result != ButtonResult.OK)
+                        {
+                            return;
+                        }
 
-                    name = newBrand.Name;
-                    iconPath = newBrand.IconPath;
+                        var newBrand = dialogResult.Parameters.GetValue<Brand>(nameof(Brand));
+
+                        name = newBrand.Name;
+                        iconPath = newBrand.IconPath;
+                        isCanceled = false;
+                    });
+
                     break;
                 case Brand _:
-                    this.dialogService.ShowDialog(nameof(AddProductView), new DialogParameters(), result => dialogResult = result);
-
-                    if (dialogResult?.Result != ButtonResult.OK)
+                    this.dialogService.ShowDialog(nameof(AddProductView), new DialogParameters(), result =>
                     {
-                        return;
-                    }
+                        var dialogResult = result;
 
-                    var newProduct = dialogResult.Parameters.GetValue<Product>(nameof(Product));
+                        if (dialogResult.Result != ButtonResult.OK)
+                        {
+                            return;
+                        }
 
-                    name = newProduct.Name;
-                    iconPath = newProduct.IconPath;
-                    path = newProduct.Path;
+                        var newProduct = dialogResult.Parameters.GetValue<Product>(nameof(Product));
+
+                        name = newProduct.Name;
+                        iconPath = newProduct.IconPath;
+                        path = newProduct.Path;
+                        isCanceled = false;
+                    });
+
                     break;
                 default:
                     return;
+            }
+
+            if (isCanceled)
+            {
+                return;
             }
 
             await this.model.AddItemAsync(name, iconPath, path).ConfigureAwait(false);
@@ -278,42 +293,57 @@ namespace ERGLauncher.ViewModels
 
         private async Task EditItemAsync()
         {
-            IDialogResult? dialogResult = null;
-            string name;
-            string? iconPath;
+            var isCanceled = true;
+            string name = string.Empty;
+            string? iconPath = null;
             string path = string.Empty;
 
             switch (this.CurrentItem.Value)
             {
                 case RootItem _:
-                    this.dialogService.ShowDialog(nameof(AddBrandView), new DialogParameters { { nameof(Brand), this.SelectedItem.Value } }, result => dialogResult = result);
-
-                    if (dialogResult?.Result != ButtonResult.OK)
+                    this.dialogService.ShowDialog(nameof(AddBrandView), new DialogParameters { { nameof(Brand), this.SelectedItem.Value } }, result =>
                     {
-                        return;
-                    }
+                        var dialogResult = result;
 
-                    var newBrand = dialogResult.Parameters.GetValue<Brand>(nameof(Brand));
+                        if (dialogResult.Result != ButtonResult.OK)
+                        {
+                            return;
+                        }
 
-                    name = newBrand.Name;
-                    iconPath = newBrand.IconPath;
+                        var newBrand = dialogResult.Parameters.GetValue<Brand>(nameof(Brand));
+
+                        name = newBrand.Name;
+                        iconPath = newBrand.IconPath;
+                        isCanceled = false;
+                    });
+
                     break;
                 case Brand _:
-                    this.dialogService.ShowDialog(nameof(AddProductView), new DialogParameters { { nameof(Product), this.SelectedItem.Value } }, result => dialogResult = result);
-
-                    if (dialogResult?.Result != ButtonResult.OK)
+                    this.dialogService.ShowDialog(nameof(AddProductView), new DialogParameters { { nameof(Product), this.SelectedItem.Value } }, result =>
                     {
-                        return;
-                    }
+                        var dialogResult = result;
 
-                    var newProduct = dialogResult.Parameters.GetValue<Product>(nameof(Product));
+                        if (dialogResult.Result != ButtonResult.OK)
+                        {
+                            return;
+                        }
 
-                    name = newProduct.Name;
-                    iconPath = newProduct.IconPath;
-                    path = newProduct.Path;
+                        var newProduct = dialogResult.Parameters.GetValue<Product>(nameof(Product));
+
+                        name = newProduct.Name;
+                        iconPath = newProduct.IconPath;
+                        path = newProduct.Path;
+                        isCanceled = true;
+                    });
+
                     break;
                 default:
                     return;
+            }
+
+            if (isCanceled)
+            {
+                return;
             }
 
             await this.model.EditItemAsync(name, iconPath, path).ConfigureAwait(false);
@@ -333,7 +363,7 @@ namespace ERGLauncher.ViewModels
 
         private void OpenSetting()
         {
-            this.dialogService.ShowDialog(nameof(SettingView), new DialogParameters(), result => { });
+            this.dialogService.ShowDialog(nameof(SettingView), new DialogParameters(), _ => { });
         }
 
         private async Task LoadSettingAsync()
