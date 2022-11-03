@@ -83,14 +83,18 @@ namespace ERGLauncher.Services.Implementations
         public async ValueTask<BitmapImage> CreateBitmapImageAsync(string filePath)
         {
             var image = new BitmapImage();
-            await using var fileStream = File.OpenRead(filePath);
+            var fileStream = File.OpenRead(filePath);
 
-            image.BeginInit();
-            image.CacheOption = BitmapCacheOption.OnLoad;
-            image.StreamSource = fileStream;
-            image.EndInit();
+            await using (fileStream.ConfigureAwait(false))
+            {
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.StreamSource = fileStream;
+                image.EndInit();
+                image.Freeze();
 
-            return image;
+                return image;
+            }
         }
 
         /// <inheritdoc />
@@ -101,18 +105,29 @@ namespace ERGLauncher.Services.Implementations
                 return null;
             }
 
-            if (Directory.GetParent(filePath).FullName == Path.Combine(this.baseDirectoryPath, AssetsDirectoryName))
+            if (Directory.GetParent(filePath)!.FullName == Path.Combine(this.baseDirectoryPath, AssetsDirectoryName))
             {
                 return filePath;
             }
 
             var newFilePath = this.GetNewFilePath(Path.GetExtension(filePath));
-            await using var sourceStream = File.OpenRead(filePath);
-            await using var destinationStream = File.Create(newFilePath);
+#pragma warning disable CA2000
+            var sourceStream = File.OpenRead(filePath);
+#pragma warning restore CA2000
 
-            await sourceStream.CopyToAsync(destinationStream).ConfigureAwait(false);
+            await using (sourceStream.ConfigureAwait(false))
+            {
+#pragma warning disable CA2000
+                var destinationStream = File.Create(newFilePath);
+#pragma warning restore CA2000
 
-            return newFilePath;
+                await using (destinationStream.ConfigureAwait(false))
+                {
+                    await sourceStream.CopyToAsync(destinationStream).ConfigureAwait(false);
+
+                    return newFilePath;
+                }
+            }
         }
 
         /// <inheritdoc />
@@ -132,7 +147,7 @@ namespace ERGLauncher.Services.Implementations
             var (_, stdOut, stdError) = ProcessX.GetDualAsyncEnumerable(
                 fileName: "cmd.exe",
                 zstringBuilder.ToString(),
-                Directory.GetParent(filePath).FullName);
+                Directory.GetParent(filePath)!.FullName);
             var stdOutTask = Task.Run(async () =>
             {
                 await foreach (var item in stdOut)
@@ -172,11 +187,16 @@ namespace ERGLauncher.Services.Implementations
             }
 
             var filePath = this.GetNewFilePath(".png");
-            await using var fileStream = File.Create(filePath);
+#pragma warning disable CA2000
+            var fileStream = File.Create(filePath);
+#pragma warning restore CA2000
 
-            bitmap.Save(fileStream, ImageFormat.Png);
+            await using (fileStream.ConfigureAwait(false))
+            {
+                bitmap.Save(fileStream, ImageFormat.Png);
 
-            return filePath;
+                return filePath;
+            }
         }
 
         /// <inheritdoc />

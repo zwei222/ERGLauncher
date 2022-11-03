@@ -43,7 +43,7 @@ namespace ERGLauncher.Services.Implementations
                 return null;
             }
 
-            if (!(settings is OpenFileDialogSettings openFileDialogSettings))
+            if (settings is not OpenFileDialogSettings openFileDialogSettings)
             {
                 return null;
             }

@@ -21,6 +21,7 @@ using Prism.Mvvm;
 using Prism.Services.Dialogs;
 using ZLogger;
 
+[assembly: CLSCompliant(true)]
 namespace ERGLauncher
 {
     /// <summary>

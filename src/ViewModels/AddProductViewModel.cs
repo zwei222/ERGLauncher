@@ -168,7 +168,7 @@ namespace ERGLauncher.ViewModels
                 return;
             }
 
-            await this.model.SelectFileAsync(settings.FileName).ConfigureAwait(false);
+            await this.model.SelectFileAsync(settings.FileName).ConfigureAwait(true);
         }
 
         /// <summary>
