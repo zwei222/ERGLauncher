@@ -1,384 +1,238 @@
 ﻿using System;
-using System.Linq;
-using System.Reactive.Linq;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using ERGLauncher.Core;
 using ERGLauncher.Models;
-using ERGLauncher.Views;
-using Prism.Services.Dialogs;
-using Reactive.Bindings;
-using Reactive.Bindings.Extensions;
+using ERGLauncher.Services;
 
-namespace ERGLauncher.ViewModels
+namespace ERGLauncher.ViewModels;
+
+public partial class MainViewModel : ViewModelBase
 {
-    /// <summary>
-    /// Main ViewModel.
-    /// </summary>
-    public class MainViewModel : ViewModelBase
+    private readonly IMainModel model;
+    private readonly IViewDialogService dialogService;
+
+    public MainViewModel(IMainModel model, IViewDialogService dialogService)
+        : base(model)
     {
-        /// <summary>
-        /// Main model.
-        /// </summary>
-        private readonly IMainModel model;
+        this.model = model ?? throw new ArgumentNullException(nameof(model));
+        this.dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+        title = model.Title;
+        isEnabledBack = model.IsEnabledBack;
+        isEnabledForward = model.IsEnabledForward;
+        currentBrand = model.CurrentBrand;
+        selectedItem = model.SelectedItem;
+        currentItem = model.CurrentItem;
+        Items = model.Items;
+        model.PropertyChanged += OnModelPropertyChanged;
 
-        /// <summary>
-        /// Dialog service.
-        /// </summary>
-        private readonly IDialogService dialogService;
+        BackCommand = new RelayCommand(model.Back, CanGoBack);
+        ForwardCommand = new RelayCommand(model.Forward, CanGoForward);
+        SelectItemAsyncCommand = new AsyncRelayCommand(SelectItemAsync, () => !IsBusy);
+        AddItemAsyncCommand = new AsyncRelayCommand(AddItemAsync, () => !IsBusy);
+        EditItemAsyncCommand = new AsyncRelayCommand(EditItemAsync, CanEditOrRemove);
+        RemoveItemAsyncCommand = new AsyncRelayCommand(RemoveItemAsync, CanEditOrRemove);
+        OpenSettingCommand = new AsyncRelayCommand(OpenSettingAsync, () => !IsBusy);
+        LoadSettingAsyncCommand = new AsyncRelayCommand(LoadSettingAsync, () => !IsBusy);
+        SaveAppSettingAsyncCommand = new AsyncRelayCommand(SaveAppSettingAsync, () => !IsBusy);
+    }
 
-        /// <summary>
-        /// Constructor.
-        /// </summary>
-        /// <param name="model">Model</param>
-        /// <param name="dialogService">Dialog service</param>
-        public MainViewModel(IMainModel model, IDialogService dialogService)
-            : base(model)
+    [ObservableProperty]
+    private string? title;
+
+    [ObservableProperty]
+    private bool isEnabledBack;
+
+    [ObservableProperty]
+    private bool isEnabledForward;
+
+    [ObservableProperty]
+    private string? currentBrand;
+
+    [ObservableProperty]
+    private Item? selectedItem;
+
+    [ObservableProperty]
+    private Item? currentItem;
+
+    public ObservableCollection<Item> Items { get; }
+
+    public IRelayCommand BackCommand { get; }
+
+    public IRelayCommand ForwardCommand { get; }
+
+    public IAsyncRelayCommand SelectItemAsyncCommand { get; }
+
+    public IAsyncRelayCommand AddItemAsyncCommand { get; }
+
+    public IAsyncRelayCommand EditItemAsyncCommand { get; }
+
+    public IAsyncRelayCommand RemoveItemAsyncCommand { get; }
+
+    public IAsyncRelayCommand OpenSettingCommand { get; }
+
+    public IAsyncRelayCommand LoadSettingAsyncCommand { get; }
+
+    public IAsyncRelayCommand SaveAppSettingAsyncCommand { get; }
+
+    partial void OnSelectedItemChanged(Item? value)
+    {
+        model.SelectedItem = value;
+        EditItemAsyncCommand.NotifyCanExecuteChanged();
+        RemoveItemAsyncCommand.NotifyCanExecuteChanged();
+    }
+
+    protected override void OnBusyStateChanged() => NotifyCommandStates();
+
+    protected override void DisposeManaged()
+    {
+        model.PropertyChanged -= OnModelPropertyChanged;
+        base.DisposeManaged();
+    }
+
+    private bool CanGoBack() => !IsBusy && IsEnabledBack;
+
+    private bool CanGoForward() => !IsBusy && IsEnabledForward;
+
+    private bool CanEditOrRemove() => !IsBusy && SelectedItem is not null;
+
+    private async Task SelectItemAsync()
+    {
+        using var busy = BeginBusy();
+        await model.SelectItemAsync().ConfigureAwait(true);
+    }
+
+    private async Task AddItemAsync()
+    {
+        var dialogName = CurrentItem switch
         {
-            this.model = model ?? throw new ArgumentNullException(nameof(model));
-            this.dialogService = dialogService;
+            RootItem => "AddBrand",
+            Brand => "AddProduct",
+            _ => null,
+        };
 
-            // properties
-            this.Title = this.model.ObserveProperty(myModel => myModel.Title).ToReadOnlyReactivePropertySlim()
-                .AddTo(this.Disposable);
-            this.IsEnabledBack = this.model.ObserveProperty(myModel => myModel.IsEnabledBack)
-                .ToReadOnlyReactivePropertySlim().AddTo(this.Disposable);
-            this.IsEnabledForward = this.model.ObserveProperty(myModel => myModel.IsEnabledForward)
-                .ToReadOnlyReactivePropertySlim().AddTo(this.Disposable);
-            this.CurrentBrand = this.model.ObserveProperty(myModel => myModel.CurrentBrand)
-                .ToReadOnlyReactivePropertySlim().AddTo(this.Disposable);
-            this.Items = this.model.Items.ToReadOnlyReactiveCollection().AddTo(this.Disposable);
-            this.SelectedItem = this.model.ToReactivePropertyAsSynchronized(myModel => myModel.SelectedItem)
-                .AddTo(this.Disposable);
-            this.CurrentItem = this.model.ObserveProperty(myModel => myModel.CurrentItem)
-                .ToReadOnlyReactivePropertySlim().AddTo(this.Disposable);
-
-            // commands
-            this.BackCommand = new[]
-            {
-                this.IsBusy.Select(isBusy => !isBusy),
-                this.IsEnabledBack.Select(isEnabledBack => isEnabledBack),
-            }
-            .CombineLatest(combined => combined.All(condition => condition))
-            .ToReactiveCommand()
-            .AddTo(this.Disposable);
-            this.BackCommand.Subscribe(this.Back);
-            this.ForwardCommand = new[]
-            {
-                this.IsBusy.Select(isBusy => !isBusy),
-                this.IsEnabledForward.Select(isEnabledForward => isEnabledForward),
-            }
-            .CombineLatest(combined => combined.All(condition => condition))
-            .ToReactiveCommand()
-            .AddTo(this.Disposable);
-            this.ForwardCommand.Subscribe(this.Forward);
-            this.SelectItemAsyncCommand = new[]
-            {
-                this.IsBusy.Select(isBusy => !isBusy),
-            }
-            .CombineLatest(combined => combined.All(condition => condition))
-            .ToAsyncReactiveCommand()
-            .AddTo(this.Disposable);
-            this.SelectItemAsyncCommand.Subscribe(this.SelectItemAsync);
-            this.AddItemAsyncCommand = new[]
-            {
-                this.IsBusy.Select(isBusy => !isBusy),
-            }
-            .CombineLatest(combined => combined.All(condition => condition))
-            .ToAsyncReactiveCommand()
-            .AddTo(this.Disposable);
-            this.AddItemAsyncCommand.Subscribe(this.AddItemAsync);
-            this.EditItemAsyncCommand = new[]
-            {
-                this.IsBusy.Select(isBusy => !isBusy),
-                this.SelectedItem.Select(selectedItem => selectedItem != null),
-            }
-            .CombineLatest(combined => combined.All(condition => condition))
-            .ToAsyncReactiveCommand()
-            .AddTo(this.Disposable);
-            this.EditItemAsyncCommand.Subscribe(this.EditItemAsync);
-            this.RemoveItemAsyncCommand = new[]
-            {
-                this.IsBusy.Select(isBusy => !isBusy),
-                this.SelectedItem.Select(selectedItem => selectedItem != null),
-            }
-            .CombineLatest(combined => combined.All(condition => condition))
-            .ToAsyncReactiveCommand()
-            .AddTo(this.Disposable);
-            this.RemoveItemAsyncCommand.Subscribe(this.RemoveItemAsync);
-            this.OpenSettingCommand = new[]
-            {
-                this.IsBusy.Select(isBusy => !isBusy),
-            }
-            .CombineLatest(combined => combined.All(condition => condition)).ToReactiveCommand()
-            .AddTo(this.Disposable);
-            this.OpenSettingCommand.Subscribe(this.OpenSetting);
-            this.LoadSettingAsyncCommand = new[]
-            {
-                this.IsBusy.Select(isBusy => !isBusy),
-            }
-            .CombineLatest(combined => combined.All(condition => condition))
-            .ToAsyncReactiveCommand()
-            .AddTo(this.Disposable);
-            this.LoadSettingAsyncCommand.Subscribe(this.LoadSettingAsync);
-            this.SaveAppSettingAsyncCommand = this.IsBusy.Select(isBusy => !isBusy).ToAsyncReactiveCommand()
-                .WithSubscribe(this.SaveAppSettingAsync).AddTo(this.Disposable);
+        if (dialogName is null)
+        {
+            return;
         }
 
-        /// <summary>
-        /// Title.
-        /// </summary>
-        public ReadOnlyReactivePropertySlim<string?> Title { get; }
-
-        /// <summary>
-        /// <see langword="true" /> if you can go back; otherwise <see langword="false" />.
-        /// </summary>
-        public ReadOnlyReactivePropertySlim<bool> IsEnabledBack { get; }
-
-        /// <summary>
-        /// <see langword="true" /> if you can go forward; otherwise <see langword="false" />.
-        /// </summary>
-        public ReadOnlyReactivePropertySlim<bool> IsEnabledForward { get; }
-
-        /// <summary>
-        /// Current brand name.
-        /// </summary>
-        public ReadOnlyReactivePropertySlim<string?> CurrentBrand { get; }
-
-        /// <summary>
-        /// Display items.
-        /// </summary>
-        public ReadOnlyReactiveCollection<Item> Items { get; }
-
-        /// <summary>
-        /// Selected item.
-        /// </summary>
-        public ReactiveProperty<Item?> SelectedItem { get; }
-
-        /// <summary>
-        /// Current item.
-        /// </summary>
-        public ReadOnlyReactivePropertySlim<Item?> CurrentItem { get; }
-
-        /// <summary>
-        /// Back command.
-        /// </summary>
-        public ReactiveCommand BackCommand { get; }
-
-        /// <summary>
-        /// Forward command.
-        /// </summary>
-        public ReactiveCommand ForwardCommand { get; }
-
-        /// <summary>
-        /// Selected item asynchronous command.
-        /// </summary>
-        public AsyncReactiveCommand SelectItemAsyncCommand { get; }
-
-        /// <summary>
-        /// Add item asynchronous command.
-        /// </summary>
-        public AsyncReactiveCommand AddItemAsyncCommand { get; }
-
-        /// <summary>
-        /// Edit item asynchronous command.
-        /// </summary>
-        public AsyncReactiveCommand EditItemAsyncCommand { get; }
-
-        /// <summary>
-        /// Remove item asynchronous command.
-        /// </summary>
-        public AsyncReactiveCommand RemoveItemAsyncCommand { get; }
-
-        /// <summary>
-        /// Open setting command.
-        /// </summary>
-        public ReactiveCommand OpenSettingCommand { get; }
-
-        /// <summary>
-        /// Load settings asynchronous command.
-        /// </summary>
-        public AsyncReactiveCommand LoadSettingAsyncCommand { get; }
-
-        /// <summary>
-        /// Save application settings asynchronous command.
-        /// </summary>
-        public AsyncReactiveCommand SaveAppSettingAsyncCommand { get; }
-
-        /// <summary>
-        /// Go back history.
-        /// </summary>
-        private void Back()
+        using var busy = BeginBusy();
+        var result = await dialogService.ShowDialogAsync(dialogName).ConfigureAwait(true);
+        if (!result.Accepted)
         {
-            this.model.Back();
+            return;
         }
 
-        /// <summary>
-        /// Go forward history.
-        /// </summary>
-        private void Forward()
+        switch (result.Value)
         {
-            this.model.Forward();
+            case Brand brand:
+                await model.AddItemAsync(brand.Name, brand.IconPath, string.Empty).ConfigureAwait(true);
+                break;
+            case Product product:
+                await model.AddItemAsync(product.Name, product.IconPath, product.Path).ConfigureAwait(true);
+                break;
+        }
+    }
+
+    private async Task EditItemAsync()
+    {
+        var dialogName = CurrentItem switch
+        {
+            RootItem => "AddBrand",
+            Brand => "AddProduct",
+            _ => null,
+        };
+
+        if (dialogName is null || SelectedItem is null)
+        {
+            return;
         }
 
-        /// <summary>
-        /// Select item asynchronous.
-        /// </summary>
-        /// <returns>Task</returns>
-        private async Task SelectItemAsync()
+        using var busy = BeginBusy();
+        var result = await dialogService.ShowDialogAsync(dialogName, SelectedItem).ConfigureAwait(true);
+        if (!result.Accepted)
         {
-            await this.model.SelectItemAsync().ConfigureAwait(false);
+            return;
         }
 
-        /// <summary>
-        /// Add item asynchronous.
-        /// </summary>
-        /// <returns>Task</returns>
-        private async Task AddItemAsync()
+        switch (result.Value)
         {
-            var isCanceled = true;
-            string name = string.Empty;
-            string? iconPath = null;
-            string path = string.Empty;
-
-            switch (this.CurrentItem.Value)
-            {
-                case RootItem _:
-                    this.dialogService.ShowDialog(nameof(AddBrandView), new DialogParameters(), result =>
-                    {
-                        var dialogResult = result;
-
-                        if (dialogResult.Result != ButtonResult.OK)
-                        {
-                            return;
-                        }
-
-                        var newBrand = dialogResult.Parameters.GetValue<Brand>(nameof(Brand));
-
-                        name = newBrand.Name;
-                        iconPath = newBrand.IconPath;
-                        isCanceled = false;
-                    });
-
-                    break;
-                case Brand _:
-                    this.dialogService.ShowDialog(nameof(AddProductView), new DialogParameters(), result =>
-                    {
-                        var dialogResult = result;
-
-                        if (dialogResult.Result != ButtonResult.OK)
-                        {
-                            return;
-                        }
-
-                        var newProduct = dialogResult.Parameters.GetValue<Product>(nameof(Product));
-
-                        name = newProduct.Name;
-                        iconPath = newProduct.IconPath;
-                        path = newProduct.Path;
-                        isCanceled = false;
-                    });
-
-                    break;
-                default:
-                    return;
-            }
-
-            if (isCanceled)
-            {
-                return;
-            }
-
-            await this.model.AddItemAsync(name, iconPath, path).ConfigureAwait(false);
+            case Brand brand:
+                await model.EditItemAsync(brand.Name, brand.IconPath, string.Empty).ConfigureAwait(true);
+                break;
+            case Product product:
+                await model.EditItemAsync(product.Name, product.IconPath, product.Path).ConfigureAwait(true);
+                break;
         }
+    }
 
-        private async Task EditItemAsync()
+    private async Task RemoveItemAsync()
+    {
+        using var busy = BeginBusy();
+        if (await model.RemoveItemAsync().ConfigureAwait(true))
         {
-            var isCanceled = true;
-            string name = string.Empty;
-            string? iconPath = null;
-            string path = string.Empty;
-
-            switch (this.CurrentItem.Value)
-            {
-                case RootItem _:
-                    this.dialogService.ShowDialog(nameof(AddBrandView), new DialogParameters { { nameof(Brand), this.SelectedItem.Value } }, result =>
-                    {
-                        var dialogResult = result;
-
-                        if (dialogResult.Result != ButtonResult.OK)
-                        {
-                            return;
-                        }
-
-                        var newBrand = dialogResult.Parameters.GetValue<Brand>(nameof(Brand));
-
-                        name = newBrand.Name;
-                        iconPath = newBrand.IconPath;
-                        isCanceled = false;
-                    });
-
-                    break;
-                case Brand _:
-                    this.dialogService.ShowDialog(nameof(AddProductView), new DialogParameters { { nameof(Product), this.SelectedItem.Value } }, result =>
-                    {
-                        var dialogResult = result;
-
-                        if (dialogResult.Result != ButtonResult.OK)
-                        {
-                            return;
-                        }
-
-                        var newProduct = dialogResult.Parameters.GetValue<Product>(nameof(Product));
-
-                        name = newProduct.Name;
-                        iconPath = newProduct.IconPath;
-                        path = newProduct.Path;
-                        isCanceled = true;
-                    });
-
-                    break;
-                default:
-                    return;
-            }
-
-            if (isCanceled)
-            {
-                return;
-            }
-
-            await this.model.EditItemAsync(name, iconPath, path).ConfigureAwait(false);
+            await model.SaveSettingAsync().ConfigureAwait(true);
         }
+    }
 
-        private async Task RemoveItemAsync()
+    private async Task OpenSettingAsync()
+    {
+        using var busy = BeginBusy();
+        await dialogService.ShowDialogAsync("Setting").ConfigureAwait(true);
+    }
+
+    private async Task LoadSettingAsync()
+    {
+        using var busy = BeginBusy();
+        await model.LoadAppSettingAsync().ConfigureAwait(true);
+        await model.LoadSettingAsync().ConfigureAwait(true);
+    }
+
+    private async Task SaveAppSettingAsync()
+    {
+        using var busy = BeginBusy();
+        await model.SaveAppSettingAsync().ConfigureAwait(true);
+    }
+
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
         {
-            if (!await this.model.RemoveItemAsync().ConfigureAwait(true))
-            {
-                return;
-            }
-
-            using var process = this.BusyNotifier.ProcessStart();
-
-            await this.model.SaveSettingAsync().ConfigureAwait(false);
+            case nameof(IMainModel.Title): Title = model.Title; break;
+            case nameof(IMainModel.IsEnabledBack): IsEnabledBack = model.IsEnabledBack; BackCommand.NotifyCanExecuteChanged(); break;
+            case nameof(IMainModel.IsEnabledForward): IsEnabledForward = model.IsEnabledForward; ForwardCommand.NotifyCanExecuteChanged(); break;
+            case nameof(IMainModel.CurrentBrand): CurrentBrand = model.CurrentBrand; break;
+            case nameof(IMainModel.SelectedItem): SelectedItem = model.SelectedItem; break;
+            case nameof(IMainModel.CurrentItem): CurrentItem = model.CurrentItem; break;
+            case null:
+            case "": Refresh(); break;
         }
+    }
 
-        private void OpenSetting()
-        {
-            this.dialogService.ShowDialog(nameof(SettingView), new DialogParameters(), _ => { });
-        }
+    private void Refresh()
+    {
+        Title = model.Title;
+        IsEnabledBack = model.IsEnabledBack;
+        IsEnabledForward = model.IsEnabledForward;
+        CurrentBrand = model.CurrentBrand;
+        SelectedItem = model.SelectedItem;
+        CurrentItem = model.CurrentItem;
+        NotifyCommandStates();
+    }
 
-        private async Task LoadSettingAsync()
-        {
-            using var process = this.BusyNotifier.ProcessStart();
-
-            await this.model.LoadAppSettingAsync().ConfigureAwait(true);
-            await this.model.LoadSettingAsync().ConfigureAwait(false);
-        }
-
-        private async Task SaveAppSettingAsync()
-        {
-            using var process = this.BusyNotifier.ProcessStart();
-
-            await this.model.SaveAppSettingAsync().ConfigureAwait(false);
-        }
+    private void NotifyCommandStates()
+    {
+        BackCommand.NotifyCanExecuteChanged();
+        ForwardCommand.NotifyCanExecuteChanged();
+        SelectItemAsyncCommand.NotifyCanExecuteChanged();
+        AddItemAsyncCommand.NotifyCanExecuteChanged();
+        EditItemAsyncCommand.NotifyCanExecuteChanged();
+        RemoveItemAsyncCommand.NotifyCanExecuteChanged();
+        OpenSettingCommand.NotifyCanExecuteChanged();
+        LoadSettingAsyncCommand.NotifyCanExecuteChanged();
+        SaveAppSettingAsyncCommand.NotifyCanExecuteChanged();
     }
 }

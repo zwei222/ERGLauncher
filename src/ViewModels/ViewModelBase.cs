@@ -1,124 +1,137 @@
 ﻿using System;
-using System.Reactive.Disposables;
-using System.Windows;
+using System.ComponentModel;
+using System.Threading;
+using Avalonia.Controls;
+using CommunityToolkit.Mvvm.ComponentModel;
 using ERGLauncher.Models;
-using Reactive.Bindings;
-using Reactive.Bindings.Extensions;
-using Reactive.Bindings.Notifiers;
 
-namespace ERGLauncher.ViewModels
+namespace ERGLauncher.ViewModels;
+
+public abstract partial class ViewModelBase : ObservableObject, IDisposable
 {
-    /// <summary>
-    /// Base ViewModel.
-    /// </summary>
-    public abstract class ViewModelBase : IDisposable
+    private readonly IModelBase model;
+    private int busyCount;
+
+    protected ViewModelBase(IModelBase model)
     {
-        /// <summary>
-        /// Constructor.
-        /// </summary>
-        /// <param name="model">Model</param>
-        protected ViewModelBase(IModelBase model)
+        this.model = model ?? throw new ArgumentNullException(nameof(model));
+        height = model.Height;
+        width = model.Width;
+        top = model.Top;
+        left = model.Left;
+        windowState = model.WindowState;
+        model.PropertyChanged += OnModelPropertyChanged;
+    }
+
+    [ObservableProperty]
+    private double height;
+
+    [ObservableProperty]
+    private double width;
+
+    [ObservableProperty]
+    private double top;
+
+    [ObservableProperty]
+    private double left;
+
+    [ObservableProperty]
+    private WindowState windowState;
+
+    [ObservableProperty]
+    private bool isBusy;
+
+    public bool IsDisposed { get; private set; }
+
+    protected IDisposable BeginBusy()
+    {
+        if (Interlocked.Increment(ref busyCount) == 1)
         {
-            this.BusyNotifier = new BusyNotifier();
-            this.IsBusy = this.BusyNotifier.ToReadOnlyReactivePropertySlim().AddTo(this.Disposable);
-            this.Height = model.ToReactivePropertyAsSynchronized(myModel => myModel.Height)
-                .AddTo(this.Disposable);
-            this.Width = model.ToReactivePropertyAsSynchronized(myModel => myModel.Width)
-                .AddTo(this.Disposable);
-            this.Top = model.ToReactivePropertyAsSynchronized(myModel => myModel.Top)
-                .AddTo(this.Disposable);
-            this.Left = model.ToReactivePropertyAsSynchronized(myModel => myModel.Left)
-                .AddTo(this.Disposable);
-            this.WindowState = model.ToReactivePropertyAsSynchronized(myModel => myModel.WindowState)
-                .AddTo(this.Disposable);
+            IsBusy = true;
         }
 
-        /// <summary>
-        /// Window height.
-        /// </summary>
-        public ReactiveProperty<double> Height { get; }
+        return new BusyScope(this);
+    }
 
-        /// <summary>
-        /// Window width.
-        /// </summary>
-        public ReactiveProperty<double> Width { get; }
+    protected virtual void OnBusyStateChanged()
+    {
+    }
 
-        /// <summary>
-        /// Window top position.
-        /// </summary>
-        public ReactiveProperty<double> Top { get; }
+    partial void OnHeightChanged(double value) => model.Height = value;
 
-        /// <summary>
-        /// Window left position.
-        /// </summary>
-        public ReactiveProperty<double> Left { get; }
+    partial void OnWidthChanged(double value) => model.Width = value;
 
-        /// <summary>
-        /// Window state.
-        /// </summary>
-        public ReactiveProperty<WindowState> WindowState { get; }
+    partial void OnTopChanged(double value) => model.Top = value;
 
-        /// <summary>
-        /// <see langword="true" /> if the resource has been released; otherwise <see langword="false" />.
-        /// </summary>
-        public bool IsDisposed { get; private set; }
+    partial void OnLeftChanged(double value) => model.Left = value;
 
-        /// <summary>
-        /// Composite disposable.
-        /// </summary>
-        protected CompositeDisposable Disposable { get; } = new CompositeDisposable();
+    partial void OnWindowStateChanged(WindowState value) => model.WindowState = value;
 
-        /// <summary>
-        /// <see langword="true" /> if busy; otherwise <see langword="false" />.
-        /// </summary>
-        public ReadOnlyReactivePropertySlim<bool> IsBusy { get; }
+    partial void OnIsBusyChanged(bool value) => OnBusyStateChanged();
 
-        /// <summary>
-        /// Busy notifier.
-        /// </summary>
-        public BusyNotifier BusyNotifier { get; }
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
 
-        /// <inheritdoc />
-        public void Dispose()
+    protected virtual void Dispose(bool disposing)
+    {
+        if (IsDisposed)
         {
-            this.Dispose(true);
-            GC.SuppressFinalize(this);
+            return;
         }
 
-        /// <summary>
-        /// Dispose a managed resource.
-        /// </summary>
-        protected virtual void DisposeManaged()
+        if (disposing)
         {
-            this.Disposable?.Dispose();
+            model.PropertyChanged -= OnModelPropertyChanged;
+            DisposeManaged();
         }
 
-        /// <summary>
-        /// Dispose a unmanaged resource.
-        /// </summary>
-        protected virtual void DisposeUnmanaged()
+        IsDisposed = true;
+    }
+
+    protected virtual void DisposeManaged()
+    {
+    }
+
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
         {
+            case nameof(IModelBase.Height): Height = model.Height; break;
+            case nameof(IModelBase.Width): Width = model.Width; break;
+            case nameof(IModelBase.Top): Top = model.Top; break;
+            case nameof(IModelBase.Left): Left = model.Left; break;
+            case nameof(IModelBase.WindowState): WindowState = model.WindowState; break;
+            case null:
+            case "":
+                Height = model.Height;
+                Width = model.Width;
+                Top = model.Top;
+                Left = model.Left;
+                WindowState = model.WindowState;
+                break;
+        }
+    }
+
+    private void EndBusy()
+    {
+        if (Interlocked.Decrement(ref busyCount) == 0)
+        {
+            IsBusy = false;
+        }
+    }
+
+    private sealed class BusyScope : IDisposable
+    {
+        private Action? endBusy;
+
+        public BusyScope(ViewModelBase owner)
+        {
+            endBusy = owner.EndBusy;
         }
 
-        /// <summary>
-        /// Release the used resources.
-        /// </summary>
-        /// <param name="disposing"><see langword="true" /> if release explicitly; otherwise <see langword="false" /></param>
-        protected virtual void Dispose(bool disposing)
-        {
-            if (this.IsDisposed)
-            {
-                return;
-            }
-
-            this.DisposeUnmanaged();
-
-            if (disposing)
-            {
-                this.DisposeManaged();
-            }
-
-            this.IsDisposed = true;
-        }
+        public void Dispose() => Interlocked.Exchange(ref endBusy, null)?.Invoke();
     }
 }

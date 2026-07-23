@@ -1,156 +1,123 @@
-﻿using System.Linq;
-using System.Reactive.Linq;
+﻿using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
-using System.Windows.Media.Imaging;
+using Avalonia.Media.Imaging;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using ERGLauncher.Core;
 using ERGLauncher.Core.DialogSettings.Implementations;
 using ERGLauncher.Models;
 using ERGLauncher.Properties;
 using ERGLauncher.Services;
-using Prism.Services.Dialogs;
-using Reactive.Bindings;
-using Reactive.Bindings.Extensions;
 
-namespace ERGLauncher.ViewModels
+namespace ERGLauncher.ViewModels;
+
+public partial class AddBrandViewModel : DialogViewModelBase
 {
-    /// <summary>
-    /// Add brand ViewModel.
-    /// </summary>
-    public class AddBrandViewModel : DialogViewModelBase
+    private readonly IAddBrandModel model;
+    private readonly ICommonDialogService commonDialogService;
+
+    public AddBrandViewModel(IAddBrandModel model, ICommonDialogService commonDialogService)
+        : base(model ?? throw new ArgumentNullException(nameof(model)))
     {
-        /// <summary>
-        /// Add brand model.
-        /// </summary>
-        private readonly IAddBrandModel model;
+        this.model = model;
+        this.commonDialogService = commonDialogService ?? throw new ArgumentNullException(nameof(commonDialogService));
+        name = model.Name;
+        iconPath = model.IconPath;
+        icon = model.Icon;
+        model.PropertyChanged += OnModelPropertyChanged;
+        SelectIconAsyncCommand = new AsyncRelayCommand(SelectIconAsync, () => !IsBusy);
+        AddBrandAsyncCommand = new AsyncRelayCommand(AddBrandAsync, CanAddBrand);
+        CancelCommand = new RelayCommand(Cancel, () => !IsBusy);
+    }
 
-        /// <summary>
-        /// Common dialog service.
-        /// </summary>
-        private readonly ICommonDialogService commonDialogService;
+    [ObservableProperty]
+    private string name;
 
-        /// <summary>
-        /// Constructor.
-        /// </summary>
-        /// <param name="model">Model</param>
-        /// <param name="commonDialogService">Common dialog service</param>
-        public AddBrandViewModel(IAddBrandModel model, ICommonDialogService commonDialogService)
-            : base(model)
+    [ObservableProperty]
+    private string? iconPath;
+
+    [ObservableProperty]
+    private Bitmap? icon;
+
+    public IAsyncRelayCommand SelectIconAsyncCommand { get; }
+
+    public IAsyncRelayCommand AddBrandAsyncCommand { get; }
+
+    public IRelayCommand CancelCommand { get; }
+
+    public override void OnDialogOpened(object? parameter)
+    {
+        if (parameter is Brand brand)
         {
-            this.model = model;
-            this.commonDialogService = commonDialogService;
-
-            // properties
-            this.Name = this.model.ToReactivePropertyAsSynchronized(myModel => myModel.Name)
-                .AddTo(this.Disposable);
-            this.IconPath = this.model.ToReactivePropertyAsSynchronized(myModel => myModel.IconPath)
-                .AddTo(this.Disposable);
-            this.Icon = this.model.ObserveProperty(myModel => myModel.Icon).ToReadOnlyReactivePropertySlim()
-                .AddTo(this.Disposable);
-
-            // commands
-            this.SelectIconAsyncCommand = new[]
-            {
-                this.IsBusy.Select(isBusy => !isBusy),
-            }.CombineLatest(combined => combined.All(condition => condition)).ToAsyncReactiveCommand()
-            .AddTo(this.Disposable);
-            this.SelectIconAsyncCommand.Subscribe(this.SelectIconAsync);
-            this.AddBrandAsyncCommand = new[]
-            {
-                this.IsBusy.Select(isBusy => !isBusy),
-                this.Name.Select(name => !string.IsNullOrWhiteSpace(name)),
-            }.CombineLatest(combined => combined.All(condition => condition)).ToAsyncReactiveCommand()
-            .AddTo(this.Disposable);
-            this.AddBrandAsyncCommand.Subscribe(this.AddBrandAsync);
-            this.CancelCommand = new[]
-            {
-                this.IsBusy.Select(isBusy => !isBusy),
-            }.CombineLatest(combined => combined.All(condition => condition)).ToReactiveCommand()
-            .AddTo(this.Disposable);
-            this.CancelCommand.Subscribe(this.Cancel);
+            model.LoadBrand(brand);
+            Refresh();
         }
+    }
 
-        /// <summary>
-        /// Brand name.
-        /// </summary>
-        public ReactiveProperty<string> Name { get; }
+    partial void OnNameChanged(string value)
+    {
+        model.Name = value;
+        AddBrandAsyncCommand.NotifyCanExecuteChanged();
+    }
 
-        /// <summary>
-        /// Icon file path.
-        /// </summary>
-        public ReactiveProperty<string?> IconPath { get; }
+    partial void OnIconPathChanged(string? value) => model.IconPath = value;
 
-        /// <summary>
-        /// Icon.
-        /// </summary>
-        public ReadOnlyReactivePropertySlim<BitmapImage?> Icon { get; }
+    protected override void OnBusyStateChanged()
+    {
+        SelectIconAsyncCommand.NotifyCanExecuteChanged();
+        AddBrandAsyncCommand.NotifyCanExecuteChanged();
+        CancelCommand.NotifyCanExecuteChanged();
+    }
 
-        /// <summary>
-        /// Select icon asynchronous command.
-        /// </summary>
-        public AsyncReactiveCommand SelectIconAsyncCommand { get; }
+    protected override void DisposeManaged()
+    {
+        model.PropertyChanged -= OnModelPropertyChanged;
+        base.DisposeManaged();
+    }
 
-        /// <summary>
-        /// Add brand asynchronous command.
-        /// </summary>
-        public AsyncReactiveCommand AddBrandAsyncCommand { get; }
+    private bool CanAddBrand() => !IsBusy && !string.IsNullOrWhiteSpace(Name);
 
-        /// <summary>
-        /// Cancel command.
-        /// </summary>
-        public ReactiveCommand CancelCommand { get; }
-
-        /// <inheritdoc />
-        public override void OnDialogOpened(IDialogParameters parameters)
+    private async Task SelectIconAsync()
+    {
+        using var busy = BeginBusy();
+        var settings = new OpenFileDialogSettings
         {
-            if (parameters != null && parameters.TryGetValue<Brand>(nameof(Brand), out var result))
-            {
-                this.model.LoadBrand(result);
-            }
-        }
+            Filter = model.GetCultureString(nameof(Resources.ImageFiles)),
+            CanMultiSelect = false,
+            Title = model.GetCultureString(nameof(Resources.OpenIconFile)),
+        };
 
-        /// <summary>
-        /// Select icon asynchronous.
-        /// </summary>
-        /// <returns>Task</returns>
-        private async Task SelectIconAsync()
+        if (commonDialogService.ShowDialog(settings))
         {
-            using var process = this.BusyNotifier.ProcessStart();
-            var settings = new OpenFileDialogSettings
-            {
-                Filter = this.model.GetCultureString(nameof(Resources.ImageFiles)),
-                CanMultiSelect = false,
-                Title = this.model.GetCultureString(nameof(Resources.OpenIconFile)),
-            };
-
-            if (!this.commonDialogService.ShowDialog(settings))
-            {
-                return;
-            }
-
-            await this.model.SelectIconAsync(settings.FileName).ConfigureAwait(false);
+            await model.SelectIconAsync(settings.FileName).ConfigureAwait(true);
         }
+    }
 
-        /// <summary>
-        /// Add brand asynchronous.
-        /// </summary>
-        /// <returns>Task</returns>
-        private async Task AddBrandAsync()
+    private async Task AddBrandAsync()
+    {
+        using var busy = BeginBusy();
+        RaiseRequestClose(true, await model.AddBrandAsync().ConfigureAwait(true));
+    }
+
+    private void Cancel() => RaiseRequestClose(false);
+
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
         {
-            var brand = await this.model.AddBrandAsync().ConfigureAwait(true);
-            var parameter = new DialogParameters
-            {
-                { nameof(Brand), brand },
-            };
-
-            this.RaiseRequestClose(new DialogResult(ButtonResult.OK, parameter));
+            case nameof(IAddBrandModel.Name): Name = model.Name; break;
+            case nameof(IAddBrandModel.IconPath): IconPath = model.IconPath; break;
+            case nameof(IAddBrandModel.Icon): Icon = model.Icon; break;
+            case null:
+            case "": Refresh(); break;
         }
+    }
 
-        /// <summary>
-        /// Cancel.
-        /// </summary>
-        private void Cancel()
-        {
-            this.RaiseRequestClose(new DialogResult(ButtonResult.Cancel));
-        }
+    private void Refresh()
+    {
+        Name = model.Name;
+        IconPath = model.IconPath;
+        Icon = model.Icon;
     }
 }
