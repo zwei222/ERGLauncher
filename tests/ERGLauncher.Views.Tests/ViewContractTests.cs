@@ -81,6 +81,16 @@ public class ViewContractTests
         await Assert.That(source).Contains("ClosingCommand=\"{Binding SaveAppSettingAsyncCommand}\"");
     }
 
+    [Test]
+    public async Task MainView_UsesCompiledBindingsForNativeAot()
+    {
+        var source = await File.ReadAllTextAsync(Path.Combine(ViewsDirectory, "MainView.axaml"));
+
+        await Assert.That(source).Contains("x:CompileBindings=\"True\"");
+        await Assert.That(source).Contains("x:DataType=\"views:IMainViewDataContext\"");
+        await Assert.That(source).DoesNotContain("ReflectionBinding");
+    }
+
     [Arguments("MainView", "Items", "SelectedItem", "AddItemAsyncCommand", "OpenSettingCommand")]
     [Arguments("AddBrandView", "Name", "Icon", "SelectIconAsyncCommand", "AddBrandAsyncCommand")]
     [Arguments("AddProductView", "Name", "Path", "SelectFileAsyncCommand", "AddProductAsyncCommand")]

@@ -22,7 +22,11 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.3.18" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.18" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.18" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../ERGLauncher.Core/ERGLauncher.Core.csproj" Aliases="MigratedCore" />
   </ItemGroup>
 </Project>
