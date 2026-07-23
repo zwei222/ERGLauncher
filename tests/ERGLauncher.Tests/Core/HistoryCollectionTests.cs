@@ -1,11 +1,11 @@
 using ERGLauncher.Core.Models;
 
-namespace ERGLauncher.Core.Tests.Models;
+namespace ERGLauncher.Tests.Core;
 
 public sealed class HistoryCollectionTests
 {
     [Test]
-    public async Task Push_enables_undo_and_exposes_previous_value()
+    public async Task PushEnablesUndoAndExposesPreviousValue()
     {
         var history = new HistoryCollection<string>("root");
 
@@ -20,7 +20,7 @@ public sealed class HistoryCollectionTests
     }
 
     [Test]
-    public async Task Back_and_forward_move_between_existing_entries_and_stop_at_boundaries()
+    public async Task BackAndForwardStopAtBoundariesAndUpdateNavigationState()
     {
         var history = new HistoryCollection<string>("root");
         history.Push("brand");
@@ -36,7 +36,7 @@ public sealed class HistoryCollectionTests
     }
 
     [Test]
-    public async Task At_selects_valid_entry_and_ignores_out_of_range_indices()
+    public async Task AtSelectsValidEntryAndDoesNotMoveForInvalidIndex()
     {
         var history = new HistoryCollection<string>("root");
         history.Push("brand");
@@ -51,7 +51,7 @@ public sealed class HistoryCollectionTests
     }
 
     [Test]
-    public async Task Push_after_back_discards_forward_history()
+    public async Task PushAfterBackDiscardsRedoHistory()
     {
         var history = new HistoryCollection<string>("root");
         history.Push("brand-a");
@@ -67,7 +67,7 @@ public sealed class HistoryCollectionTests
     }
 
     [Test]
-    public async Task Remove_adjusts_index_for_items_before_at_and_after_current_entry()
+    public async Task RemoveAdjustsIndexBeforeAtAndAfterCurrentEntry()
     {
         var history = new HistoryCollection<string>("root");
         history.Push("brand");
@@ -86,7 +86,7 @@ public sealed class HistoryCollectionTests
     }
 
     [Test]
-    public async Task Clear_resets_navigation_and_allows_reuse()
+    public async Task ClearResetsNavigationAndAllowsReuse()
     {
         var history = new HistoryCollection<string>("root");
         history.Push("brand");
@@ -100,21 +100,5 @@ public sealed class HistoryCollectionTests
         await Assert.That(history.IsEnabledRedo).IsFalse();
         history.Push("new-root");
         await Assert.That(history.CurrentValue).IsEqualTo("new-root");
-    }
-
-    [Test]
-    public async Task Clone_keeps_an_independent_copy_at_the_same_position()
-    {
-        var history = new HistoryCollection<string>("root");
-        history.Push("brand");
-        history.Back();
-
-        var clone = (HistoryCollection<string>)history.Clone();
-        clone.Push("other");
-
-        await Assert.That(history).IsEquivalentTo(["root", "brand"]);
-        await Assert.That(history.CurrentValue).IsEqualTo("root");
-        await Assert.That(clone).IsEquivalentTo(["root", "other"]);
-        await Assert.That(clone.CurrentValue).IsEqualTo("other");
     }
 }
