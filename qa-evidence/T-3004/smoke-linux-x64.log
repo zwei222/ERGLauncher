@@ -1,0 +1,23 @@
+BINARY_FILE=src/ERGLauncher/bin/Release/net10.0/linux-x64/publish/ERGLauncher: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=657ccd26d61eabd388b83aff76d9432514e2aafe, for GNU/Linux 3.2.0, stripped
+
+SMOKE_RUN=1
+SETTINGS_LOAD=PASS culture=ja-JP theme=Dark brands=1
+CRUD_CREATE=PASS
+CRUD_UPDATE_DELETE=PASS
+SETTINGS_SAVE=PASS
+RESTART_PERSISTENCE=PASS
+SETTINGS_SMOKE=PASS
+SMOKE_RUN_1_EXIT_CODE=0
+
+SMOKE_RUN=2
+SETTINGS_LOAD=PASS culture=en-US theme=Light brands=2
+CRUD_READ_AFTER_RESTART=PASS
+CRUD_UPDATE_DELETE=PASS
+SETTINGS_SAVE=PASS
+RESTART_PERSISTENCE=PASS
+SETTINGS_SMOKE=PASS
+SMOKE_RUN_2_EXIT_CODE=0
+
+FINAL_SHA256
+8b5a626e0016ce13f4ab0737e6da1398e1b5d6d60c394bfbf95bd7c45c1520a9  qa-evidence/T-3004/linux-smoke-work/settings/appSettings.json
+7976ebc542ada19b246e3f4604a8ac87a6c572c7f0543ad277539232a16ccb00  qa-evidence/T-3004/linux-smoke-work/settings/gameSettings.json

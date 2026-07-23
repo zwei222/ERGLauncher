@@ -1,10 +1,14 @@
 <Window x:Class="ERGLauncher.Views.MainView"
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:ERGLauncher.Core"
         xmlns:properties="using:ERGLauncher.Properties"
+        xmlns:views="using:ERGLauncher.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
+        x:CompileBindings="True"
+        x:DataType="views:IMainViewDataContext"
         d:DesignWidth="900"
         d:DesignHeight="620"
         Title="{Binding Title}"
@@ -64,9 +68,9 @@
             </ItemsPanelTemplate>
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
-            <DataTemplate>
+            <DataTemplate x:DataType="core:Item">
               <Button Width="150" Height="150" Margin="6"
-                      Command="{Binding $parent[Window].DataContext.SelectItemAsyncCommand}"
+                      Command="{Binding $parent[views:MainView].((views:IMainViewDataContext)DataContext).SelectItemAsyncCommand}"
                       CommandParameter="{Binding}">
                 <Grid RowDefinitions="*,Auto">
                   <Image Source="{Binding Icon}" Width="80" Height="80" Stretch="Uniform" />
