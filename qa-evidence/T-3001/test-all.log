@@ -1,0 +1,26 @@
+次からテストを実行しています: /home/hermes/repos/workspace/agent/tests/ERGLauncher.Views.Tests/bin/Debug/net10.0/ERGLauncher.Views.Tests.dll (net10.0|x64)
+次からテストを実行しています: /home/hermes/repos/workspace/agent/tests/ERGLauncher.Tests/bin/Debug/net10.0/ERGLauncher.Tests.dll (net10.0|x64)
+次からテストを実行しています: /home/hermes/repos/workspace/agent/tests/ERGLauncher.ViewModels.Tests/bin/Debug/net10.0/ERGLauncher.ViewModels.Tests.dll (net10.0|x64)
+次からテストを実行しています: /home/hermes/repos/workspace/agent/tests/ERGLauncher.Core.Tests/bin/Debug/net10.0/ERGLauncher.Core.Tests.dll (net10.0|x64)
+/home/hermes/repos/workspace/agent/tests/ERGLauncher.Views.Tests/bin/Debug/net10.0/ERGLauncher.Views.Tests.dll (net10.0|x64) 合格しました (1s 231ms)
+/home/hermes/repos/workspace/agent/tests/ERGLauncher.ViewModels.Tests/bin/Debug/net10.0/ERGLauncher.ViewModels.Tests.dll (net10.0|x64) 合格しました (1s 291ms)
+/home/hermes/repos/workspace/agent/tests/ERGLauncher.Tests/bin/Debug/net10.0/ERGLauncher.Tests.dll (net10.0|x64) 合格しました (3s 544ms)
+/home/hermes/repos/workspace/agent/tests/ERGLauncher.Core.Tests/bin/Debug/net10.0/ERGLauncher.Core.Tests.dll (net10.0|x64) 合格しました (3s 578ms)
+
+  インプロセスのファイル成果物が生成されました:
+    - /home/hermes/repos/workspace/agent/TestResults/ERGLauncher.Views.Tests-linux-net10.0-report.html
+    - /home/hermes/repos/workspace/agent/TestResults/ERGLauncher.ViewModels.Tests-linux-net10.0-report.html
+    - /home/hermes/repos/workspace/agent/TestResults/ERGLauncher.Tests-linux-net10.0-report.html
+    - /home/hermes/repos/workspace/agent/TestResults/ERGLauncher.Core.Tests-linux-net10.0-report.html
+
+テストの実行の概要: 成功!
+  /home/hermes/repos/workspace/agent/tests/ERGLauncher.Tests/bin/Debug/net10.0/ERGLauncher.Tests.dll (net10.0|x64) 合格しました (3s 544ms)
+  /home/hermes/repos/workspace/agent/tests/ERGLauncher.Core.Tests/bin/Debug/net10.0/ERGLauncher.Core.Tests.dll (net10.0|x64) 合格しました (3s 578ms)
+  /home/hermes/repos/workspace/agent/tests/ERGLauncher.Views.Tests/bin/Debug/net10.0/ERGLauncher.Views.Tests.dll (net10.0|x64) 合格しました (1s 231ms)
+  /home/hermes/repos/workspace/agent/tests/ERGLauncher.ViewModels.Tests/bin/Debug/net10.0/ERGLauncher.ViewModels.Tests.dll (net10.0|x64) 合格しました (1s 291ms)
+
+  合計: 60
+  失敗: 0
+  成功: 60
+  スキップ済み: 0
+  期間: 3s 787ms
