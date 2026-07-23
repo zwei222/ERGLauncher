@@ -20,7 +20,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var services = new ServiceCollection();
-            services.AddSingleton<MainWindow>();
+            services.AddSingleton<MainView>();
 
             serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
             {
@@ -28,7 +28,7 @@ public partial class App : Application
                 ValidateScopes = true,
             });
 
-            desktop.MainWindow = serviceProvider.GetRequiredService<MainWindow>();
+            desktop.MainWindow = serviceProvider.GetRequiredService<MainView>();
             desktop.Exit += (_, _) => serviceProvider.Dispose();
         }
 

@@ -8,11 +8,6 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="TUnit" Version="1.61.35" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="../../src/ViewModels/*.cs" Link="ViewModels/%(Filename)%(Extension)" />
-    <Compile Include="../../src/Services/IViewDialogService.cs" Link="Services/IViewDialogService.cs" />
   </ItemGroup>
 </Project>

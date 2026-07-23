@@ -1,0 +1,27 @@
+<UserControl x:Class="ERGLauncher.Views.MessageView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:properties="using:ERGLauncher.Properties"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="520"
+             d:DesignHeight="320">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="20" RowSpacing="16">
+    <StackPanel>
+      <TextBlock Text="{Binding Message}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Border Grid.Row="1" IsVisible="{Binding IsShowDetails}"
+            Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1" CornerRadius="8" Padding="12">
+      <TextBox Text="{Binding Details}" IsReadOnly="True" AcceptsReturn="True"
+               TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+    </Border>
+
+    <Button Grid.Row="2" Content="{x:Static properties:Resources.Close}" Command="{Binding CloseCommand}"
+            Classes="accent" HorizontalAlignment="Right" MinWidth="90" />
+  </Grid>
+</UserControl>
