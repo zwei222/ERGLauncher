@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="TUnit" Version="1.6.27" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../src/ViewModels/*.cs" Link="ViewModels/%(Filename)%(Extension)" />
+    <Compile Include="../../src/Services/IViewDialogService.cs" Link="Services/IViewDialogService.cs" />
+  </ItemGroup>
+</Project>

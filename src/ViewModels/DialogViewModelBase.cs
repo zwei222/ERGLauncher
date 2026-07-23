@@ -1,63 +1,38 @@
 ﻿using System;
+using CommunityToolkit.Mvvm.ComponentModel;
 using ERGLauncher.Models;
-using Prism.Services.Dialogs;
 
-namespace ERGLauncher.ViewModels
+namespace ERGLauncher.ViewModels;
+
+public abstract partial class DialogViewModelBase : ViewModelBase
 {
-    /// <summary>
-    /// Base dialog ViewModel.
-    /// </summary>
-    public abstract class DialogViewModelBase : ViewModelBase, IDialogAware
+    protected DialogViewModelBase(IModelBase model)
+        : base(model)
     {
-        /// <inheritdoc />
-        public event Action<IDialogResult> RequestClose = null!;
-
-        /// <summary>
-        /// Constructor.
-        /// </summary>
-        /// <param name="model">Model</param>
-        protected DialogViewModelBase(IModelBase model)
-            : base(model)
-        {
-            this.Title = string.Empty;
-        }
-
-        /// <inheritdoc />
-        public string Title { get; protected set; }
-
-        /// <inheritdoc />
-        public virtual bool CanCloseDialog()
-        {
-            return true;
-        }
-
-        /// <inheritdoc />
-        public virtual void OnDialogClosed()
-        {
-            this.RequestClose -= this.OnDialogClosing;
-        }
-
-        /// <inheritdoc />
-        public virtual void OnDialogOpened(IDialogParameters parameters)
-        {
-            this.RequestClose += this.OnDialogClosing;
-        }
-
-        /// <summary>
-        /// Called when the dialog is closing.
-        /// </summary>
-        /// <param name="dialogResult">Dialog result</param>
-        protected virtual void OnDialogClosing(IDialogResult dialogResult)
-        {
-        }
-
-        /// <summary>
-        /// Raise RequestClose event
-        /// </summary>
-        /// <param name="dialogResult">Dialog result</param>
-        protected virtual void RaiseRequestClose(IDialogResult dialogResult)
-        {
-            this.RequestClose?.Invoke(dialogResult);
-        }
     }
+
+    [ObservableProperty]
+    private string title = string.Empty;
+
+    public event EventHandler<DialogCloseRequestedEventArgs>? RequestClose;
+
+    public virtual bool CanCloseDialog() => true;
+
+    public virtual void OnDialogOpened(object? parameter)
+    {
+    }
+
+    public virtual void OnDialogClosed()
+    {
+    }
+
+    protected void RaiseRequestClose(bool accepted, object? value = null) =>
+        RequestClose?.Invoke(this, new DialogCloseRequestedEventArgs(accepted, value));
+}
+
+public sealed class DialogCloseRequestedEventArgs(bool accepted, object? value) : EventArgs
+{
+    public bool Accepted { get; } = accepted;
+
+    public object? Value { get; } = value;
 }

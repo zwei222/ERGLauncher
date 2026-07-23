@@ -1,86 +1,76 @@
 ﻿using System;
-using System.Reactive.Linq;
+using System.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using ERGLauncher.Core.DialogSettings.Implementations;
 using ERGLauncher.Models;
-using Prism.Services.Dialogs;
-using Reactive.Bindings;
-using Reactive.Bindings.Extensions;
 
-namespace ERGLauncher.ViewModels
+namespace ERGLauncher.ViewModels;
+
+public partial class MessageViewModel : DialogViewModelBase
 {
-    /// <summary>
-    /// Message dialog ViewModel.
-    /// </summary>
-    public class MessageViewModel : DialogViewModelBase
+    private readonly IMessageModel model;
+
+    public MessageViewModel(IMessageModel model)
+        : base(model)
     {
-        /// <summary>
-        /// Message model.
-        /// </summary>
-        private readonly IMessageModel model;
+        this.model = model ?? throw new ArgumentNullException(nameof(model));
+        Title = model.Title ?? string.Empty;
+        message = model.Message;
+        details = model.Details;
+        isShowDetails = model.IsShowDetails;
+        model.PropertyChanged += OnModelPropertyChanged;
+        CloseCommand = new RelayCommand(Close, () => !IsBusy);
+    }
 
-        /// <summary>
-        /// Constructor.
-        /// </summary>
-        /// <param name="model">Model</param>
-        public MessageViewModel(IMessageModel model)
-            : base(model)
+    [ObservableProperty]
+    private string message;
+
+    [ObservableProperty]
+    private string? details;
+
+    [ObservableProperty]
+    private bool isShowDetails;
+
+    public IRelayCommand CloseCommand { get; }
+
+    public override void OnDialogOpened(object? parameter)
+    {
+        if (parameter is MessageDialogSettings settings)
         {
-            this.model = model ?? throw new ArgumentNullException(nameof(model));
-            var title = this.model.Title;
-
-            if (title != null)
-            {
-                this.Title = title;
-            }
-
-            // properties
-            this.Message = this.model.ObserveProperty(myModel => myModel.Message).ToReadOnlyReactivePropertySlim()
-                .AddTo(this.Disposable);
-            this.Details = this.model.ObserveProperty(myModel => myModel.Details).ToReadOnlyReactivePropertySlim()
-                .AddTo(this.Disposable);
-            this.IsShowDetails = this.model.ObserveProperty(myModel => myModel.IsShowDetails).ToReadOnlyReactivePropertySlim()
-                .AddTo(this.Disposable);
-
-            // commands
-            this.CloseCommand = this.IsBusy.Select(isBusy => !isBusy).ToReactiveCommand().AddTo(this.Disposable);
-            this.CloseCommand.Subscribe(this.Close);
+            model.LoadSettings(settings);
+            Refresh();
         }
+    }
 
-        /// <summary>
-        /// Message.
-        /// </summary>
-        public ReadOnlyReactivePropertySlim<string> Message { get; }
+    protected override void OnBusyStateChanged() => CloseCommand.NotifyCanExecuteChanged();
 
-        /// <summary>
-        /// Detailed message.
-        /// </summary>
-        public ReadOnlyReactivePropertySlim<string?> Details { get; }
+    protected override void DisposeManaged()
+    {
+        model.PropertyChanged -= OnModelPropertyChanged;
+        base.DisposeManaged();
+    }
 
-        /// <summary>
-        /// <see langword="true" /> if show detailed message; otherwise <see langword="false" />.
-        /// </summary>
-        public ReadOnlyReactivePropertySlim<bool> IsShowDetails { get; }
+    private void Close() => RaiseRequestClose(true);
 
-        /// <summary>
-        /// Close command.
-        /// </summary>
-        public ReactiveCommand CloseCommand { get; }
-
-        /// <inheritdoc />
-        public override void OnDialogOpened(IDialogParameters parameters)
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
         {
-            if (parameters != null && parameters.TryGetValue<MessageDialogSettings>(nameof(MessageDialogSettings), out var result))
-            {
-                this.model.LoadSettings(result);
-            }
+            case nameof(IMessageModel.Title): Title = model.Title ?? string.Empty; break;
+            case nameof(IMessageModel.Message): Message = model.Message; break;
+            case nameof(IMessageModel.Details): Details = model.Details; break;
+            case nameof(IMessageModel.IsShowDetails): IsShowDetails = model.IsShowDetails; break;
+            case null:
+            case "": Refresh(); break;
         }
+    }
 
-        /// <summary>
-        /// Close dialog
-        /// </summary>
-        private void Close()
-        {
-            this.RaiseRequestClose(new DialogResult(ButtonResult.OK));
-        }
+    private void Refresh()
+    {
+        Title = model.Title ?? string.Empty;
+        Message = model.Message;
+        Details = model.Details;
+        IsShowDetails = model.IsShowDetails;
     }
 }
