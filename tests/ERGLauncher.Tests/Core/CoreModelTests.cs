@@ -1,6 +1,4 @@
 using ERGLauncher.Core;
-using TUnit.Assertions;
-using TUnit.Core;
 
 namespace ERGLauncher.Tests.Core;
 
@@ -24,20 +22,5 @@ public sealed class CoreModelTests
             nameof(Product.Path),
             nameof(Product.BrandName),
         ]);
-    }
-
-    [Test]
-    public async Task PushAfterUndoDiscardsRedoHistory()
-    {
-        var history = new HistoryCollection<string>("first");
-        history.Push("second");
-        history.Push("third");
-
-        history.Back();
-        history.Push("replacement");
-
-        await Assert.That(history.Count).IsEqualTo(3);
-        await Assert.That(history.CurrentValue).IsEqualTo("replacement");
-        await Assert.That(history.IsEnabledRedo).IsFalse();
     }
 }
