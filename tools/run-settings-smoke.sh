@@ -9,14 +9,23 @@ FIXTURES="$ROOT/tests/ERGLauncher.Tests/Fixtures"
 RUN_ROOT="$ROOT/qa-artifacts/verification/settings-smoke-$(date +%Y%m%d-%H%M%S-%N)"
 SETTINGS_DIR="$RUN_ROOT/settings"
 TMP_DIR="$RUN_ROOT/tmp"
+NUGET_PACKAGES_DIR="$RUN_ROOT/nuget-packages"
+NUGET_HTTP_CACHE_DIR="$RUN_ROOT/nuget-http-cache"
+DOTNET_HOME="$RUN_ROOT/dotnet-home"
+TEST_RESULTS_DIR="$RUN_ROOT/TestResults"
 LOG="$RUN_ROOT/settings-smoke.log"
 FIXTURE_HASHES_BEFORE="$RUN_ROOT/fixture-sha256-before.txt"
 FIXTURE_HASHES_AFTER="$RUN_ROOT/fixture-sha256-after.txt"
 
-mkdir -p "$SETTINGS_DIR" "$TMP_DIR"
+mkdir -p "$SETTINGS_DIR" "$TMP_DIR" "$NUGET_PACKAGES_DIR" "$NUGET_HTTP_CACHE_DIR" "$DOTNET_HOME" "$TEST_RESULTS_DIR"
 export TMPDIR="$TMP_DIR"
 export TEMP="$TMP_DIR"
 export TMP="$TMP_DIR"
+export NUGET_PACKAGES="$NUGET_PACKAGES_DIR"
+export NUGET_HTTP_CACHE_PATH="$NUGET_HTTP_CACHE_DIR"
+export DOTNET_CLI_HOME="$DOTNET_HOME"
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export DOTNET_NOLOGO=1
 
 for fixture in appSettings.json gameSettings.json; do
     if [[ ! -s "$FIXTURES/$fixture" ]]; then
@@ -29,14 +38,12 @@ sha256sum "$FIXTURES/appSettings.json" "$FIXTURES/gameSettings.json" > "$FIXTURE
 cp -- "$FIXTURES/appSettings.json" "$SETTINGS_DIR/appSettings.json"
 cp -- "$FIXTURES/gameSettings.json" "$SETTINGS_DIR/gameSettings.json"
 
-# --no-build needs a matching Release launcher. Build the smallest target only
-# when this workspace has not produced it yet.
-if [[ ! -x "$ROOT/src/ERGLauncher/bin/Release/net10.0/ERGLauncher" ]]; then
-    printf 'Release launcher output is absent; building %s first.\n' "$PROJECT" | tee "$RUN_ROOT/build-message.log"
-    dotnet build "$PROJECT" -c Release 2>&1 | tee "$RUN_ROOT/build-release.log"
-fi
-
 printf 'Settings smoke run root: %s\n' "$RUN_ROOT" | tee "$LOG"
+printf 'TMPDIR/TEMP/TMP: %s\n' "$TMP_DIR" | tee -a "$LOG"
+printf 'NUGET_PACKAGES: %s\n' "$NUGET_PACKAGES" | tee -a "$LOG"
+printf 'NUGET_HTTP_CACHE_PATH: %s\n' "$NUGET_HTTP_CACHE_PATH" | tee -a "$LOG"
+printf 'DOTNET_CLI_HOME: %s\n' "$DOTNET_CLI_HOME" | tee -a "$LOG"
+printf 'Reserved test results: %s\n' "$TEST_RESULTS_DIR" | tee -a "$LOG"
 printf 'Command: dotnet run --project %s -c Release --no-build -- --settings-smoke %s\n' "$PROJECT" "$RUN_ROOT" | tee -a "$LOG"
 if ! dotnet run --project "$PROJECT" -c Release --no-build -- --settings-smoke "$RUN_ROOT" 2>&1 | tee -a "$LOG"; then
     printf 'Settings smoke command failed; log: %s\n' "$LOG" >&2

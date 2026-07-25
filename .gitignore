@@ -1,4 +1,6 @@
-# Generated verification logs, staged settings fixtures, and test artifacts.
+# Per-run QA logs, temporary files, NuGet packages, .NET CLI homes, staged
+# settings fixtures, and MTP test artifacts. Scripts retain these workspace-local
+# evidence directories for inspection; remove individual run directories manually.
 qa-artifacts/verification/
 
 # globs

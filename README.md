@@ -12,14 +12,19 @@ Run the canonical MTP/TUnit verification from the repository root:
 tools/verify-tests.sh
 ```
 
-The script records logs and MTP result files under
-`qa-artifacts/verification/tests-<timestamp>/`, then always runs this sequence
+Each invocation creates and retains an ignored workspace-local evidence directory:
+`qa-artifacts/verification/tests-<timestamp>/`. Before restore, the script sets
+`TMPDIR`, `TEMP`, `TMP`, `NUGET_PACKAGES`, `NUGET_HTTP_CACHE_PATH`, and
+`DOTNET_CLI_HOME` below that run directory; MTP writes results to its
+`TestResults/` directory. This intentionally uses fresh per-run NuGet package and
+HTTP caches for isolation, so remove individual completed run directories manually
+when their evidence is no longer needed. The script then always runs this sequence
 in one workspace:
 
 ```sh
 dotnet restore ERGLauncher.sln
 dotnet build ERGLauncher.sln -c Release --no-restore --warnaserror
-dotnet test ERGLauncher.sln -c Release --no-build
+dotnet test ERGLauncher.sln -c Release --no-build --results-directory <run>/TestResults
 ```
 
 `--no-build` is deliberately the final step, not an independent acceptance
@@ -45,10 +50,12 @@ tools/run-settings-smoke.sh
 ```
 
 The script copies the tracked legacy fixtures into a new
-`qa-artifacts/verification/settings-smoke-<timestamp>/settings/` directory,
-sets `TMPDIR`, `TEMP`, and `TMP` to that run's `tmp/` directory, and runs the
-Release smoke command there. The staged copies may change during CRUD and
-persistence checks; the tracked fixtures are hash-checked and remain unchanged.
+`qa-artifacts/verification/settings-smoke-<timestamp>/settings/` directory and,
+before invoking .NET, sets `TMPDIR`, `TEMP`, `TMP`, `NUGET_PACKAGES`,
+`NUGET_HTTP_CACHE_PATH`, and `DOTNET_CLI_HOME` below that run root (which also
+reserves `TestResults/` for a consistent artifact layout). The staged copies may
+change during CRUD and persistence checks; the tracked fixtures are hash-checked
+and remain unchanged.
 
 ## Author
 
