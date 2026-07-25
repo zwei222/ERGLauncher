@@ -1,3 +1,6 @@
+# Generated verification logs, staged settings fixtures, and test artifacts.
+qa-artifacts/verification/
+
 # globs
 Makefile.in
 *.userprefs
