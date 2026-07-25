@@ -11,7 +11,35 @@ public sealed class FileService : IFileService
 
     public FileService(string? baseDirectoryPath = null)
     {
-        this.baseDirectoryPath = Path.GetFullPath(baseDirectoryPath ?? AppContext.BaseDirectory);
+        this.baseDirectoryPath = ResolveBaseDirectoryPath(baseDirectoryPath);
+    }
+
+    /// <summary>
+    /// Resolves the base directory used to locate the <c>settings/</c> and <c>Assets/</c>
+    /// folders. An explicit argument always wins; otherwise the directory of the running
+    /// executable (<see cref="Environment.ProcessPath"/>) is used so that files placed
+    /// beside the launcher — as they were with the legacy WPF build — are found even when
+    /// published as single-file or Native AoT, where <see cref="AppContext.BaseDirectory"/>
+    /// can point elsewhere. <see cref="AppContext.BaseDirectory"/> remains the final fallback.
+    /// </summary>
+    private static string ResolveBaseDirectoryPath(string? baseDirectoryPath)
+    {
+        if (!string.IsNullOrWhiteSpace(baseDirectoryPath))
+        {
+            return Path.GetFullPath(baseDirectoryPath);
+        }
+
+        var processPath = Environment.ProcessPath;
+        if (!string.IsNullOrWhiteSpace(processPath))
+        {
+            var processDirectory = Path.GetDirectoryName(processPath);
+            if (!string.IsNullOrWhiteSpace(processDirectory))
+            {
+                return Path.GetFullPath(processDirectory);
+            }
+        }
+
+        return Path.GetFullPath(AppContext.BaseDirectory);
     }
 
     public string GetBaseDirectoryPath() => this.baseDirectoryPath;
