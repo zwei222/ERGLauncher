@@ -13,12 +13,12 @@ tools/verify-tests.sh
 ```
 
 Each invocation creates and retains an ignored workspace-local evidence directory:
-`qa-artifacts/verification/tests-<timestamp>/`. Before restore, the script sets
+`qa-artifacts/verification/tests-<timestamp>-<unique-suffix>/`. Before restore, the script sets
 `TMPDIR`, `TEMP`, `TMP`, `NUGET_PACKAGES`, `NUGET_HTTP_CACHE_PATH`, and
 `DOTNET_CLI_HOME` below that run directory; MTP writes results to its
 `TestResults/` directory. This intentionally uses fresh per-run NuGet package and
-HTTP caches for isolation, so remove individual completed run directories manually
-when their evidence is no longer needed. The script then always runs this sequence
+HTTP caches for isolation. Completed evidence is retained; remove individual run
+directories manually only when they are no longer needed. The script then always runs this sequence
 in one workspace:
 
 ```sh
@@ -50,12 +50,16 @@ tools/run-settings-smoke.sh
 ```
 
 The script copies the tracked legacy fixtures into a new
-`qa-artifacts/verification/settings-smoke-<timestamp>/settings/` directory and,
+`qa-artifacts/verification/settings-smoke-<timestamp>-<unique-suffix>/settings/` directory and,
 before invoking .NET, sets `TMPDIR`, `TEMP`, `TMP`, `NUGET_PACKAGES`,
 `NUGET_HTTP_CACHE_PATH`, and `DOTNET_CLI_HOME` below that run root (which also
 reserves `TestResults/` for a consistent artifact layout). The staged copies may
 change during CRUD and persistence checks; the tracked fixtures are hash-checked
-and remain unchanged.
+and remain unchanged. Both QA wrappers allocate exclusive workspace-local run
+roots, so concurrent or rapid consecutive invocations do not share staged fixtures,
+logs, temporary directories, NuGet caches, `DOTNET_CLI_HOME`, or `TestResults`.
+Neither wrapper deletes prior evidence; remove completed run directories manually
+only when they are no longer needed.
 
 ## Author
 
