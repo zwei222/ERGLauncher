@@ -1,7 +1,7 @@
 namespace ERGLauncher.Core;
 
 /// <summary>
-/// Application theme selection. Values are persisted numerically for compatibility.
+/// Application theme selection. Legacy numeric values remain readable; values are written by name.
 /// </summary>
 public enum Theme
 {

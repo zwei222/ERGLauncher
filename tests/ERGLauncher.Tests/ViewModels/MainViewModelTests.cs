@@ -38,6 +38,33 @@ public sealed class MainViewModelTests
     }
 
     [Test]
+    public async Task BrandNavigationClearsSelectionBeforeChangingItemsAndPreservesHistory()
+    {
+        var firstProduct = new CoreProduct { Name = "First title", BrandName = "First studio", Path = "/games/first" };
+        var secondProduct = new CoreProduct { Name = "Second title", BrandName = "Second studio", Path = "/games/second" };
+        var services = CreateServices(new CoreRootItem([
+            new CoreBrand([firstProduct]) { Name = "First studio" },
+            new CoreBrand([secondProduct]) { Name = "Second studio" },
+        ]));
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+        var selectedBrand = services.ViewModel.Items.OfType<ViewBrand>().First();
+        services.ViewModel.SelectedItem = selectedBrand;
+        ERGLauncher.Core.Item? selectionAtFirstCollectionChange = selectedBrand;
+        services.ViewModel.Items.CollectionChanged += (_, _) =>
+            selectionAtFirstCollectionChange = services.ViewModel.SelectedItem;
+
+        await services.ViewModel.SelectItemAsyncCommand.ExecuteAsync(selectedBrand);
+
+        await Assert.That(selectionAtFirstCollectionChange).IsNull();
+        await Assert.That(services.ViewModel.Items.Single().Name).IsEqualTo("First title");
+        services.ViewModel.BackCommand.Execute(null);
+        await Assert.That(services.ViewModel.Items).Count().IsEqualTo(2);
+        services.ViewModel.ForwardCommand.Execute(null);
+        await Assert.That(services.ViewModel.Items.Single().Name).IsEqualTo("First title");
+        await Assert.That(services.ViewModel.CurrentBrand).IsEqualTo("First studio");
+    }
+
+    [Test]
     public async Task SelectItemCommandKeepsProductConfirmationAndLaunchBehavior()
     {
         var coreProduct = new CoreProduct { Name = "Title", BrandName = "Studio", Path = "/games/title" };

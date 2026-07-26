@@ -250,6 +250,15 @@ namespace ERGLauncher.Properties {
         }
 
         /// <summary>
+        ///   More actions に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string MoreActions {
+            get {
+                return ResourceManager.GetString("MoreActions", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   An unexpected exception has occurred. に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string OnUnexpectedException {

@@ -39,27 +39,30 @@
             BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
         <Button Classes="navigation"
-                Content="←"
                 Command="{Binding BackCommand}"
                 IsEnabled="{Binding IsEnabledBack}"
                 ToolTip.Tip="{x:Static properties:Resources.Back}"
-                AutomationProperties.Name="{x:Static properties:Resources.Back}" />
+                AutomationProperties.Name="{x:Static properties:Resources.Back}">
+          <PathIcon Width="18" Height="18" Data="M20,11 L7.83,11 13.42,5.41 12,4 4,12 12,20 13.42,18.59 7.83,13 20,13 Z" />
+        </Button>
         <Button Grid.Column="1"
                 Classes="navigation"
-                Content="→"
                 Command="{Binding ForwardCommand}"
                 IsEnabled="{Binding IsEnabledForward}"
                 ToolTip.Tip="{x:Static properties:Resources.Forward}"
-                AutomationProperties.Name="{x:Static properties:Resources.Forward}" />
+                AutomationProperties.Name="{x:Static properties:Resources.Forward}">
+          <PathIcon Width="18" Height="18" Data="M4,11 L16.17,11 10.58,5.41 12,4 20,12 12,20 10.58,18.59 16.17,13 4,13 Z" />
+        </Button>
         <StackPanel Grid.Column="2" Margin="8,0" VerticalAlignment="Center">
           <TextBlock Text="ERG Launcher" FontSize="20" FontWeight="SemiBold" />
           <TextBlock Text="{Binding CurrentBrand}" Opacity="0.7" />
         </StackPanel>
         <Button Grid.Column="3"
-                Content="{x:Static properties:Resources.Setting}"
                 Command="{Binding OpenSettingCommand}"
                 ToolTip.Tip="{x:Static properties:Resources.Setting}"
-                AutomationProperties.Name="{x:Static properties:Resources.Setting}" />
+                AutomationProperties.Name="{x:Static properties:Resources.Setting}">
+          <PathIcon Width="18" Height="18" Data="M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M4.93,4.93 L7.05,7.05 M16.95,16.95 L19.07,19.07 M19.07,4.93 L16.95,7.05 M7.05,16.95 L4.93,19.07 M2,12 L5,12 M19,12 L22,12 M12,2 L12,5 M12,19 L12,22" />
+        </Button>
       </Grid>
     </Border>
 
@@ -69,12 +72,15 @@
         <TextBlock Text="{Binding CurrentBrand}" Opacity="0.7" />
       </StackPanel>
       <Button Grid.Column="1"
-              Content="{x:Static properties:Resources.Add}"
-              Command="{Binding AddItemAsyncCommand}" />
+              Command="{Binding AddItemAsyncCommand}"
+              ToolTip.Tip="{x:Static properties:Resources.Add}"
+              AutomationProperties.Name="{x:Static properties:Resources.Add}">
+        <PathIcon Width="18" Height="18" Data="M11,5 L13,5 13,11 19,11 19,13 13,13 13,19 11,19 11,13 5,13 5,11 11,11 Z" />
+      </Button>
       <Button Grid.Column="2"
-              Content="⋯"
-              ToolTip.Tip="More actions"
-              AutomationProperties.Name="More actions">
+              ToolTip.Tip="{x:Static properties:Resources.MoreActions}"
+              AutomationProperties.Name="{x:Static properties:Resources.MoreActions}">
+        <PathIcon Width="18" Height="18" Data="M5,10 A2,2 0 1 0 5,14 A2,2 0 1 0 5,10 M12,10 A2,2 0 1 0 12,14 A2,2 0 1 0 12,10 M19,10 A2,2 0 1 0 19,14 A2,2 0 1 0 19,10" />
         <Button.Flyout>
           <MenuFlyout>
             <MenuItem Header="{x:Static properties:Resources.Edit}"

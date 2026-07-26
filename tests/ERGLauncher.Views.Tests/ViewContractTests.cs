@@ -119,6 +119,29 @@ public class ViewContractTests
     }
 
     [Test]
+    public async Task MainView_UsesAccessibleLocalizedIconsForToolbarActions()
+    {
+        var source = await File.ReadAllTextAsync(Path.Combine(ViewsDirectory, "MainView.axaml"));
+
+        await Assert.That(source).Contains("<PathIcon");
+        await Assert.That(source).Contains("{x:Static properties:Resources.MoreActions}");
+        foreach (var command in new[]
+                 {
+                     "BackCommand",
+                     "ForwardCommand",
+                     "OpenSettingCommand",
+                     "AddItemAsyncCommand",
+                 })
+        {
+            await Assert.That(source).Contains($"Command=\"{{Binding {command}}}\"");
+        }
+
+        await Assert.That(source).DoesNotContain("Content=\"←\"");
+        await Assert.That(source).DoesNotContain("Content=\"→\"");
+        await Assert.That(source).DoesNotContain("Content=\"⋯\"");
+    }
+
+    [Test]
     public async Task MainView_UsesSelectionEventAndOverflowForSecondaryItemActions()
     {
         var source = await File.ReadAllTextAsync(Path.Combine(ViewsDirectory, "MainView.axaml"));

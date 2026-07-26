@@ -458,6 +458,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
     private void ShowChildren(Item item)
     {
         currentItem = item;
+        SelectedItem = null;
         Items.Clear();
         IEnumerable<Item> children = item switch
         {
@@ -470,7 +471,6 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
             Items.Add(child);
         }
 
-        SelectedItem = null;
         CurrentBrand = item is Brand currentBrandItem ? currentBrandItem.Name : null;
     }
 

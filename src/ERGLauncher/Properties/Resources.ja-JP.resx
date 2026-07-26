@@ -180,6 +180,9 @@
   <data name="LightTheme" xml:space="preserve">
     <value>ライトテーマ</value>
   </data>
+  <data name="MoreActions" xml:space="preserve">
+    <value>その他の操作</value>
+  </data>
   <data name="OnUnexpectedException" xml:space="preserve">
     <value>予期せぬ例外が発生しました。</value>
   </data>

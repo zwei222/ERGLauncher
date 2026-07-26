@@ -22,6 +22,18 @@ public sealed class JsonCompatibilityTests
     }
 
     [Test]
+    public async Task AppSettingsDeserializeWithCultureObjectAndStringTheme()
+    {
+        const string json = """{"Culture":{"Name":"ja-JP"},"Theme":"Sync"}""";
+
+        var settings = JsonSerializer.Deserialize(json, AppSettingsJsonContext.Default.AppSettings);
+
+        await Assert.That(settings).IsNotNull();
+        await Assert.That(settings!.Culture.Name).IsEqualTo("ja-JP");
+        await Assert.That(settings.Theme).IsEqualTo(Theme.Sync);
+    }
+
+    [Test]
     public async Task AppSettingsSerializeWithLegacyKeyStructure()
     {
         var settings = new AppSettings
@@ -36,7 +48,7 @@ public sealed class JsonCompatibilityTests
 
         await Assert.That(root.TryGetProperty("Culture", out var culture)).IsTrue();
         await Assert.That(culture.GetProperty("Name").GetString()).IsEqualTo("ja-JP");
-        await Assert.That(root.GetProperty("Theme").GetInt32()).IsEqualTo(2);
+        await Assert.That(root.GetProperty("Theme").GetString()).IsEqualTo("Dark");
         await Assert.That(root.TryGetProperty("culture", out _)).IsFalse();
         await Assert.That(bytes.AsSpan().StartsWith(Encoding.UTF8.Preamble)).IsFalse();
     }

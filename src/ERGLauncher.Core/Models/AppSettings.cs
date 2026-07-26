@@ -9,5 +9,6 @@ public sealed class AppSettings
     [JsonConverter(typeof(CultureInfoJsonConverter))]
     public CultureInfo Culture { get; set; } = CultureInfo.CurrentUICulture;
 
+    [JsonConverter(typeof(ThemeJsonConverter))]
     public Theme Theme { get; set; }
 }

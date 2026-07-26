@@ -18,14 +18,14 @@ public sealed class AppSettingServiceTests
     }
 
     [Test]
-    public async Task SaveThenLoadRoundTripsLegacySettingsShape()
+    public async Task SaveThenLoadRoundTripsStringThemeSettingsShape()
     {
         using var directory = new TemporaryDirectory();
         var service = new AppSettingService(new FileService(directory.Path));
         var settings = new AppSettings
         {
             Culture = CultureInfo.GetCultureInfo("ja-JP"),
-            Theme = Theme.Dark,
+            Theme = Theme.Sync,
         };
 
         await service.SaveAppSettingAsync(settings);
@@ -34,9 +34,9 @@ public sealed class AppSettingServiceTests
         var loaded = await service.LoadAppSettingAsync();
 
         await Assert.That(System.Text.Encoding.UTF8.GetString(bytes))
-            .IsEqualTo("""{"Culture":{"Name":"ja-JP"},"Theme":2}""");
+            .IsEqualTo("""{"Culture":{"Name":"ja-JP"},"Theme":"Sync"}""");
         await Assert.That(loaded).IsNotNull();
         await Assert.That(loaded!.Culture.Name).IsEqualTo("ja-JP");
-        await Assert.That(loaded.Theme).IsEqualTo(Theme.Dark);
+        await Assert.That(loaded.Theme).IsEqualTo(Theme.Sync);
     }
 }

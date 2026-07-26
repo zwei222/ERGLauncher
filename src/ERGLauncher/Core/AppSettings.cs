@@ -18,5 +18,6 @@ public sealed class AppSettings
     /// <summary>
     /// Gets or sets the requested theme.
     /// </summary>
+    [JsonConverter(typeof(ThemeJsonConverter))]
     public Theme Theme { get; set; }
 }
