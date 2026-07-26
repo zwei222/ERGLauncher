@@ -91,6 +91,47 @@ public class ViewContractTests
         await Assert.That(source).DoesNotContain("ReflectionBinding");
     }
 
+    [Test]
+    public async Task MainView_UsesListSelectionAsTheSingleItemActivationSurface()
+    {
+        var document = XDocument.Load(Path.Combine(ViewsDirectory, "MainView.axaml"));
+        XNamespace avalonia = "https://github.com/avaloniaui";
+        var listBox = document.Descendants(avalonia + "ListBox").Single();
+        var itemTemplate = listBox.Descendants(avalonia + "DataTemplate").Single();
+
+        await Assert.That(listBox.Attribute("SelectedItem")?.Value)
+            .IsEqualTo("{Binding SelectedItem, Mode=TwoWay}");
+        await Assert.That(itemTemplate.Descendants(avalonia + "Button")).IsEmpty();
+    }
+
+    [Test]
+    public async Task MainView_SeparatesPrimaryAndSecondaryActionsAndKeepsScrollBarAtListEdge()
+    {
+        var source = await File.ReadAllTextAsync(Path.Combine(ViewsDirectory, "MainView.axaml"));
+
+        await Assert.That(source).Contains("<MenuItem Header=\"{x:Static properties:Resources.Edit}\"");
+        await Assert.That(source).Contains("<MenuItem Header=\"{x:Static properties:Resources.Remove}\"");
+        await Assert.That(source).Contains("AutomationProperties.Name=");
+        await Assert.That(source).Contains("ToolTip.Tip=");
+        await Assert.That(source).Contains("ScrollViewer.VerticalScrollBarVisibility=\"Auto\"");
+        await Assert.That(source).Contains("ScrollViewer.HorizontalScrollBarVisibility=\"Disabled\"");
+        await Assert.That(source).DoesNotContain("<Border Grid.Row=\"2\"");
+    }
+
+    [Test]
+    public async Task MainView_UsesSelectionEventAndOverflowForSecondaryItemActions()
+    {
+        var source = await File.ReadAllTextAsync(Path.Combine(ViewsDirectory, "MainView.axaml"));
+
+        await Assert.That(source).Contains("SelectionChanged=\"OnListSelectionChanged\"");
+        await Assert.That(source).DoesNotContain("CommandParameter=\"{Binding}\"");
+        await Assert.That(source).Contains("<MenuFlyout>");
+        await Assert.That(source).Contains("EditItemAsyncCommand");
+        await Assert.That(source).Contains("RemoveItemAsyncCommand");
+        await Assert.That(source).Contains("HorizontalScrollBarVisibility=\"Disabled\"");
+        await Assert.That(source).Contains("VerticalScrollBarVisibility=\"Auto\"");
+    }
+
     [Arguments("MainView", "Items", "SelectedItem", "AddItemAsyncCommand", "OpenSettingCommand")]
     [Arguments("AddBrandView", "Name", "Icon", "SelectIconAsyncCommand", "AddBrandAsyncCommand")]
     [Arguments("AddProductView", "Name", "Path", "SelectFileAsyncCommand", "AddProductAsyncCommand")]

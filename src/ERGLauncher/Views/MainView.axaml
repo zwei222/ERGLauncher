@@ -20,68 +20,99 @@
         MinHeight="400"
         WindowStartupLocation="CenterScreen">
   <Window.Styles>
-    <Style Selector="Border.card">
-      <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="8" />
-      <Setter Property="Padding" Value="16" />
-    </Style>
     <Style Selector="Button.navigation">
-      <Setter Property="MinWidth" Value="42" />
+      <Setter Property="MinWidth" Value="40" />
       <Setter Property="MinHeight" Value="36" />
       <Setter Property="FontSize" Value="18" />
     </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    </Style>
   </Window.Styles>
 
-  <Grid RowDefinitions="Auto,Auto,*" Margin="20" RowSpacing="12">
-    <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
-      <Button Classes="navigation" Content="←"
-              Command="{Binding BackCommand}" IsEnabled="{Binding IsEnabledBack}"
-              ToolTip.Tip="{x:Static properties:Resources.Back}" />
-      <Button Grid.Column="1" Classes="navigation" Content="→"
-              Command="{Binding ForwardCommand}" IsEnabled="{Binding IsEnabledForward}"
-              ToolTip.Tip="{x:Static properties:Resources.Forward}" />
-      <StackPanel Grid.Column="2" Margin="8,0" VerticalAlignment="Center">
-        <TextBlock Text="ERG Launcher" FontSize="20" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding CurrentBrand}" Opacity="0.7" />
-      </StackPanel>
-      <Button Grid.Column="3" Content="{x:Static properties:Resources.Setting}"
-              Command="{Binding OpenSettingCommand}" />
-    </Grid>
-
-    <Border Grid.Row="1" Classes="card">
-      <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="8">
-        <Button Content="{x:Static properties:Resources.Add}" Command="{Binding AddItemAsyncCommand}" />
-        <Button Grid.Column="1" Content="{x:Static properties:Resources.Edit}" Command="{Binding EditItemAsyncCommand}" />
-        <Button Grid.Column="2" Content="{x:Static properties:Resources.Remove}" Command="{Binding RemoveItemAsyncCommand}" />
+  <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
+    <Border Padding="20,16"
+            Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
+        <Button Classes="navigation"
+                Content="←"
+                Command="{Binding BackCommand}"
+                IsEnabled="{Binding IsEnabledBack}"
+                ToolTip.Tip="{x:Static properties:Resources.Back}"
+                AutomationProperties.Name="{x:Static properties:Resources.Back}" />
+        <Button Grid.Column="1"
+                Classes="navigation"
+                Content="→"
+                Command="{Binding ForwardCommand}"
+                IsEnabled="{Binding IsEnabledForward}"
+                ToolTip.Tip="{x:Static properties:Resources.Forward}"
+                AutomationProperties.Name="{x:Static properties:Resources.Forward}" />
+        <StackPanel Grid.Column="2" Margin="8,0" VerticalAlignment="Center">
+          <TextBlock Text="ERG Launcher" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding CurrentBrand}" Opacity="0.7" />
+        </StackPanel>
+        <Button Grid.Column="3"
+                Content="{x:Static properties:Resources.Setting}"
+                Command="{Binding OpenSettingCommand}"
+                ToolTip.Tip="{x:Static properties:Resources.Setting}"
+                AutomationProperties.Name="{x:Static properties:Resources.Setting}" />
       </Grid>
     </Border>
 
-    <Border Grid.Row="2" Classes="card" Padding="8">
-      <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}"
-                 Background="Transparent" BorderThickness="0">
-          <ListBox.ItemsPanel>
-            <ItemsPanelTemplate>
-              <WrapPanel Orientation="Horizontal" />
-            </ItemsPanelTemplate>
-          </ListBox.ItemsPanel>
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="core:Item">
-              <Button Width="150" Height="150" Margin="6"
-                      Command="{Binding $parent[views:MainView].((views:IMainViewDataContext)DataContext).SelectItemAsyncCommand}"
-                      CommandParameter="{Binding}">
-                <Grid RowDefinitions="*,Auto">
-                  <Image Source="{Binding Icon}" Width="80" Height="80" Stretch="Uniform" />
-                  <TextBlock Grid.Row="1" Text="{Binding Name}" Margin="4,10,4,2"
-                             FontSize="15" TextAlignment="Center" TextTrimming="CharacterEllipsis" />
-                </Grid>
-              </Button>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-      </ScrollViewer>
-    </Border>
+    <Grid Grid.Row="1" Margin="20,0" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+      <StackPanel VerticalAlignment="Center">
+        <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding CurrentBrand}" Opacity="0.7" />
+      </StackPanel>
+      <Button Grid.Column="1"
+              Content="{x:Static properties:Resources.Add}"
+              Command="{Binding AddItemAsyncCommand}" />
+      <Button Grid.Column="2"
+              Content="⋯"
+              ToolTip.Tip="More actions"
+              AutomationProperties.Name="More actions">
+        <Button.Flyout>
+          <MenuFlyout>
+            <MenuItem Header="{x:Static properties:Resources.Edit}"
+                      Command="{Binding EditItemAsyncCommand}" />
+            <MenuItem Header="{x:Static properties:Resources.Remove}"
+                      Command="{Binding RemoveItemAsyncCommand}" />
+          </MenuFlyout>
+        </Button.Flyout>
+      </Button>
+    </Grid>
+
+    <ListBox Grid.Row="2"
+             Margin="20,0,0,0"
+             ItemsSource="{Binding Items}"
+             SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+             SelectionChanged="OnListSelectionChanged"
+             Background="Transparent"
+             BorderThickness="0"
+             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+             ScrollViewer.VerticalScrollBarVisibility="Auto">
+      <ListBox.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </ListBox.ItemsPanel>
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="core:Item">
+          <Grid Width="150" Height="150" Margin="6" RowDefinitions="*,Auto">
+            <Image Source="{Binding Icon}" Width="80" Height="80" Stretch="Uniform" />
+            <TextBlock Grid.Row="1"
+                       Text="{Binding Name}"
+                       Margin="4,10,4,8"
+                       FontSize="15"
+                       TextAlignment="Center"
+                       TextTrimming="CharacterEllipsis" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
   </Grid>
 </Window>

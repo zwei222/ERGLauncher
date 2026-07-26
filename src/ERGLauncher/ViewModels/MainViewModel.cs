@@ -78,7 +78,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
 
         BackCommand = new RelayCommand(GoBack, () => !IsBusy && IsEnabledBack);
         ForwardCommand = new RelayCommand(GoForward, () => !IsBusy && IsEnabledForward);
-        SelectItemAsyncCommand = new AsyncRelayCommand(SelectItemAsync, () => !IsBusy);
+        SelectItemAsyncCommand = new AsyncRelayCommand<Item>(SelectItemAsync, _ => !IsBusy);
         AddItemAsyncCommand = new AsyncRelayCommand(AddItemAsync, () => !IsBusy);
         EditItemAsyncCommand = new AsyncRelayCommand(EditItemAsync, CanEditOrRemove);
         RemoveItemAsyncCommand = new AsyncRelayCommand(RemoveItemAsync, CanEditOrRemove);
@@ -93,7 +93,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
 
     public IRelayCommand ForwardCommand { get; }
 
-    public IAsyncRelayCommand SelectItemAsyncCommand { get; }
+    public IAsyncRelayCommand<Item> SelectItemAsyncCommand { get; }
 
     public IAsyncRelayCommand AddItemAsyncCommand { get; }
 
@@ -161,10 +161,10 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
         UpdateNavigationState();
     }
 
-    private async Task SelectItemAsync()
+    private async Task SelectItemAsync(Item? item)
     {
         using var busy = BeginBusy();
-        switch (SelectedItem)
+        switch (item)
         {
             case Brand brand:
                 PushHistory(brand);

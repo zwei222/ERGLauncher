@@ -2,7 +2,9 @@ using System;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Selection;
 using Avalonia.Markup.Xaml;
+using ERGLauncher.Core;
 
 namespace ERGLauncher.Views;
 
@@ -32,6 +34,16 @@ public partial class MainView : Window
     public MainView()
     {
         AvaloniaXamlLoader.Load(this);
+    }
+
+    private void OnListSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        var item = e.AddedItems.OfType<Item>().FirstOrDefault();
+        if (item is not null && DataContext is IMainViewDataContext viewModel &&
+            viewModel.SelectItemAsyncCommand.CanExecute(item))
+        {
+            viewModel.SelectItemAsyncCommand.Execute(item);
+        }
     }
 
     protected override void OnOpened(EventArgs e)

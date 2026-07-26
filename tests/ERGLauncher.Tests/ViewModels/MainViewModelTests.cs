@@ -1,0 +1,96 @@
+using System.Globalization;
+using ERGLauncher.Core;
+using ERGLauncher.Core.Models;
+using ERGLauncher.Core.Services;
+using ERGLauncher.Services;
+using ERGLauncher.ViewModels;
+using NSubstitute;
+using CoreAppSettings = ERGLauncher.Core.Models.AppSettings;
+using CoreBrand = ERGLauncher.Core.Models.Brand;
+using CoreProduct = ERGLauncher.Core.Models.Product;
+using CoreRootItem = ERGLauncher.Core.Models.RootItem;
+using CoreTheme = ERGLauncher.Core.Models.Theme;
+using ViewBrand = ERGLauncher.Core.Brand;
+using ViewProduct = ERGLauncher.Core.Product;
+
+namespace ERGLauncher.Tests.ViewModels;
+
+public sealed class MainViewModelTests
+{
+    [Test]
+    public async Task SelectItemCommandUsesTheItemParameterToNavigateToBrandProducts()
+    {
+        var coreProduct = new CoreProduct { Name = "Title", BrandName = "Studio", Path = "/games/title" };
+        var coreBrand = new CoreBrand([coreProduct]) { Name = "Studio" };
+        var services = CreateServices(new CoreRootItem([coreBrand]));
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+        var brand = services.ViewModel.Items.OfType<ViewBrand>().Single();
+
+        await services.ViewModel.SelectItemAsyncCommand.ExecuteAsync(brand);
+
+        var product = await Assert.That(services.ViewModel.Items).HasSingleItem();
+        await Assert.That(product).IsTypeOf<ViewProduct>();
+        await Assert.That(product.Name).IsEqualTo("Title");
+        await Assert.That(services.ViewModel.CurrentBrand).IsEqualTo("Studio");
+        await Assert.That(services.ViewModel.IsEnabledBack).IsTrue();
+        await Assert.That(services.ViewModel.IsEnabledForward).IsFalse();
+        await Assert.That(services.ViewModel.SelectedItem).IsNull();
+    }
+
+    [Test]
+    public async Task SelectItemCommandKeepsProductConfirmationAndLaunchBehavior()
+    {
+        var coreProduct = new CoreProduct { Name = "Title", BrandName = "Studio", Path = "/games/title" };
+        var coreBrand = new CoreBrand([coreProduct]) { Name = "Studio" };
+        var services = CreateServices(new CoreRootItem([coreBrand]));
+        services.Dialogs
+            .ShowConfirmationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(true));
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+        await services.ViewModel.SelectItemAsyncCommand.ExecuteAsync(services.ViewModel.Items.Single());
+        var product = services.ViewModel.Items.Single();
+
+        await services.ViewModel.SelectItemAsyncCommand.ExecuteAsync(product);
+
+        await services.Dialogs.Received(1)
+            .ShowConfirmationAsync("Title", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await services.FileService.Received(1)
+            .ExecuteAsync("/games/title", Arg.Any<CancellationToken>());
+    }
+
+    private static TestServices CreateServices(CoreRootItem root)
+    {
+        var fileService = Substitute.For<IFileService>();
+        var appSettings = Substitute.For<IAppSettingService>();
+        var gameSettings = Substitute.For<IGameSettingService>();
+        var resources = Substitute.For<IResourceService>();
+        var themes = Substitute.For<IThemeService>();
+        var dialogs = Substitute.For<IDialogService>();
+        var viewDialogs = Substitute.For<IViewDialogService>();
+
+        appSettings.LoadAppSettingAsync(Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<CoreAppSettings?>(null));
+        gameSettings.LoadSettingAsync(Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(root));
+        fileService.CreateBitmapAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<Avalonia.Media.Imaging.Bitmap?>(null));
+        resources.CurrentCulture.Returns(CultureInfo.InvariantCulture);
+        resources.GetCultureString(Arg.Any<string>()).Returns(call => call.Arg<string>());
+        themes.CurrentTheme.Returns(CoreTheme.None);
+
+        var viewModel = new MainViewModel(
+            fileService,
+            appSettings,
+            gameSettings,
+            resources,
+            themes,
+            dialogs,
+            viewDialogs);
+        return new TestServices(viewModel, fileService, dialogs);
+    }
+
+    private sealed record TestServices(
+        MainViewModel ViewModel,
+        IFileService FileService,
+        IDialogService Dialogs);
+}
