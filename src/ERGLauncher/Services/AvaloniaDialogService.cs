@@ -39,12 +39,8 @@ public sealed class AvaloniaDialogService : ICoreDialogService
     {
         var result = false;
 
-        var okButton = new Button
-        {
-            Content = Properties.Resources.Ok,
-            MinWidth = 90,
-            IsDefault = true,
-        };
+        var actionButtons = AvaloniaDialogButtonFactory.CreateActionButtons(showCancel);
+        var okButton = actionButtons[^1];
         var buttons = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -69,12 +65,7 @@ public sealed class AvaloniaDialogService : ICoreDialogService
 
         if (showCancel)
         {
-            var cancelButton = new Button
-            {
-                Content = Properties.Resources.Cancel,
-                MinWidth = 90,
-                IsCancel = true,
-            };
+            var cancelButton = actionButtons[0];
             cancelButton.Click += (_, _) =>
             {
                 result = false;
