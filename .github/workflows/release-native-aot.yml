@@ -1,0 +1,189 @@
+name: Release Native AOT
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (for example, v1.2.3)
+        required: true
+        type: string
+      prerelease:
+        description: Mark the GitHub Release as a prerelease
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Native AOT (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            executable_name: ERGLauncher
+            archive_name: ERGLauncher-linux-x64.tar.gz
+            archive_extension: tar.gz
+          - os: windows-latest
+            rid: win-x64
+            executable_name: ERGLauncher.exe
+            archive_name: ERGLauncher-win-x64.zip
+            archive_extension: zip
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore solution for ${{ matrix.rid }}
+        run: dotnet restore ERGLauncher.sln --runtime ${{ matrix.rid }}
+
+      - name: Publish Native AOT application
+        run: >-
+          dotnet publish src/ERGLauncher/ERGLauncher.csproj
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishAot=true
+          --no-restore
+          --output "artifacts/publish/${{ matrix.rid }}"
+
+      - name: Stage fixtures and run Linux Native AOT settings smoke test
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/smoke
+          mkdir -p artifacts/smoke/settings
+          cp tests/ERGLauncher.Tests/Fixtures/appSettings.json artifacts/smoke/settings/appSettings.json
+          cp tests/ERGLauncher.Tests/Fixtures/gameSettings.json artifacts/smoke/settings/gameSettings.json
+          "artifacts/publish/${{ matrix.rid }}/${{ matrix.executable_name }}" --settings-smoke "$GITHUB_WORKSPACE/artifacts/smoke"
+
+      - name: Stage fixtures and run Windows Native AOT settings smoke test
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $smokeRoot = Join-Path $env:GITHUB_WORKSPACE 'artifacts/smoke'
+          if (Test-Path -LiteralPath $smokeRoot) {
+            Remove-Item -LiteralPath $smokeRoot -Recurse -Force
+          }
+          $settingsDirectory = Join-Path $smokeRoot 'settings'
+          New-Item -Path $settingsDirectory -ItemType Directory -Force | Out-Null
+          Copy-Item -LiteralPath 'tests/ERGLauncher.Tests/Fixtures/appSettings.json' -Destination (Join-Path $settingsDirectory 'appSettings.json')
+          Copy-Item -LiteralPath 'tests/ERGLauncher.Tests/Fixtures/gameSettings.json' -Destination (Join-Path $settingsDirectory 'gameSettings.json')
+          $executable = Join-Path $env:GITHUB_WORKSPACE 'artifacts/publish/${{ matrix.rid }}/${{ matrix.executable_name }}'
+          & $executable '--settings-smoke' $smokeRoot
+          if ($LASTEXITCODE -ne 0) {
+            throw "Native AOT settings smoke test failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Create Linux archive
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/packages
+          tar -C "artifacts/publish/${{ matrix.rid }}" -czf "artifacts/packages/${{ matrix.archive_name }}" .
+
+      - name: Create Windows archive
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $packageDirectory = Join-Path $env:GITHUB_WORKSPACE 'artifacts/packages'
+          New-Item -Path $packageDirectory -ItemType Directory -Force | Out-Null
+          $publishDirectory = Join-Path $env:GITHUB_WORKSPACE 'artifacts/publish/${{ matrix.rid }}'
+          $archivePath = Join-Path $packageDirectory '${{ matrix.archive_name }}'
+          Compress-Archive -Path (Join-Path $publishDirectory '*') -DestinationPath $archivePath
+
+      - name: Upload ${{ matrix.archive_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}-native-aot
+          path: artifacts/packages/${{ matrix.archive_name }}
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: native-aot-release-${{ inputs.tag }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      PRERELEASE: ${{ inputs.prerelease }}
+      TARGET_SHA: ${{ github.sha }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Native AOT archives
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Validate release tag and ensure it is new
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag_pattern='^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?(\+[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$'
+          if [[ ! "$RELEASE_TAG" =~ $tag_pattern ]]; then
+            printf 'Invalid release tag: %s\n' "$RELEASE_TAG" >&2
+            exit 1
+          fi
+
+          if remote_tag=$(git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" 2>&1); then
+            printf 'Tag already exists: %s\n' "$RELEASE_TAG" >&2
+            exit 1
+          else
+            tag_status=$?
+            if [[ $tag_status -ne 2 ]]; then
+              printf 'Unable to check remote tag: %s\n' "$remote_tag" >&2
+              exit "$tag_status"
+            fi
+          fi
+
+          release_endpoint="repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+          if api_response=$(gh api --include "$release_endpoint" 2>&1); then
+            printf 'Release already exists for tag: %s\n' "$RELEASE_TAG" >&2
+            exit 1
+          else
+            api_status=$?
+            if ! grep -Eq '^HTTP/[0-9.]+ 404([[:space:]]|$)' <<< "$api_response"; then
+              printf 'Unable to check existing release (gh exit %s):\n%s\n' "$api_status" "$api_response" >&2
+              exit "$api_status"
+            fi
+          fi
+
+      - name: Create GitHub Release and tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_args=(
+            release create "$RELEASE_TAG"
+            "release-assets/ERGLauncher-linux-x64.tar.gz"
+            "release-assets/ERGLauncher-win-x64.zip"
+            --target "$TARGET_SHA"
+            --generate-notes
+          )
+          if [[ "$PRERELEASE" == 'true' ]]; then
+            release_args+=(--prerelease)
+          fi
+          gh "${release_args[@]}"
