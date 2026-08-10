@@ -8,19 +8,22 @@
              mc:Ignorable="d"
              d:DesignWidth="560"
              d:DesignHeight="400">
-  <Grid RowDefinitions="Auto,*,Auto" Margin="20" RowSpacing="16">
-    <StackPanel>
-      <TextBlock Text="{x:Static properties:Resources.Setting}" FontSize="24" FontWeight="SemiBold" />
+  <Grid RowDefinitions="Auto,*,Auto" Margin="24" RowSpacing="20">
+    <StackPanel Spacing="4">
+      <TextBlock Text="{x:Static properties:Resources.Setting}" FontSize="28" FontWeight="SemiBold" />
+      <Border Height="3" Width="36" HorizontalAlignment="Left" Background="{DynamicResource AppAccentBrush}" CornerRadius="2" />
     </StackPanel>
 
     <TabControl Grid.Row="1">
       <TabItem Header="{x:Static properties:Resources.Generals}">
-        <Grid ColumnDefinitions="*,220" RowDefinitions="Auto,Auto" Margin="16" RowSpacing="16" ColumnSpacing="20">
-          <StackPanel>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Grid ColumnDefinitions="*,200" RowDefinitions="Auto,Auto" Margin="20" RowSpacing="20" ColumnSpacing="24">
+          <StackPanel Spacing="3">
             <TextBlock Text="{x:Static properties:Resources.SelectLanguage}" FontWeight="SemiBold" />
           </StackPanel>
-          <ComboBox Grid.Column="1" ItemsSource="{x:Static views:SettingView.AvailableLanguages}"
-                    SelectedItem="{Binding SelectedLanguage}" HorizontalAlignment="Stretch">
+          <ComboBox Classes="form-control" Grid.Column="1" ItemsSource="{x:Static views:SettingView.AvailableLanguages}"
+                    SelectedItem="{Binding SelectedLanguage}" HorizontalAlignment="Stretch"
+                    AutomationProperties.Name="{x:Static properties:Resources.SelectLanguage}">
             <ComboBox.ItemTemplate>
               <DataTemplate>
                 <TextBlock Text="{Binding NativeName}" />
@@ -28,14 +31,15 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
 
-          <StackPanel Grid.Row="1">
+          <StackPanel Grid.Row="1" Spacing="3">
             <TextBlock Text="{x:Static properties:Resources.SelectTheme}" FontWeight="SemiBold" />
           </StackPanel>
-          <ComboBox Grid.Row="1" Grid.Column="1"
+          <ComboBox Classes="form-control" Grid.Row="1" Grid.Column="1"
                     ItemsSource="{x:Static views:SettingView.AvailableThemeChoices}"
                     SelectedValueBinding="{Binding Value}"
                     SelectedValue="{Binding SelectedTheme}"
-                    HorizontalAlignment="Stretch">
+                    HorizontalAlignment="Stretch"
+                    AutomationProperties.Name="{x:Static properties:Resources.SelectTheme}">
             <ComboBox.ItemTemplate>
               <DataTemplate>
                 <TextBlock Text="{Binding DisplayName}" />
@@ -43,12 +47,13 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
         </Grid>
+        </ScrollViewer>
       </TabItem>
     </TabControl>
 
     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-      <Button Content="{x:Static properties:Resources.Apply}" Command="{Binding ApplyAsyncCommand}" />
-      <Button Content="{x:Static properties:Resources.Ok}" Command="{Binding OkAsyncCommand}" Classes="accent" />
+      <Button Classes="dialog-control" Content="{x:Static properties:Resources.Apply}" Command="{Binding ApplyAsyncCommand}" />
+      <Button Classes="dialog-control accent" Content="{x:Static properties:Resources.Ok}" Command="{Binding OkAsyncCommand}" />
     </StackPanel>
   </Grid>
 </UserControl>

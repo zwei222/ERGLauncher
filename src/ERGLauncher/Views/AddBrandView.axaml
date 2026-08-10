@@ -9,37 +9,41 @@
              d:DesignHeight="360">
   <UserControl.Styles>
     <Style Selector="Border.card">
-      <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+      <Setter Property="Background" Value="{DynamicResource AppCardBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AppCardBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="16" />
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20" RowSpacing="16">
-    <StackPanel>
-      <TextBlock Text="{x:Static properties:Resources.AddBrand}" FontSize="24" FontWeight="SemiBold" />
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="24" RowSpacing="20">
+    <StackPanel Spacing="4">
+      <TextBlock Text="{x:Static properties:Resources.AddBrand}" FontSize="28" FontWeight="SemiBold" />
+      <Border Height="3" Width="36" HorizontalAlignment="Left" Background="{DynamicResource AppAccentBrush}" CornerRadius="2" />
     </StackPanel>
 
-    <TextBox Grid.Row="1" Text="{Binding Name}"
-             Watermark="{x:Static properties:Resources.BrandName}" />
+    <TextBox Classes="form-control" Grid.Row="1" Text="{Binding Name}"
+             Watermark="{x:Static properties:Resources.BrandName}"
+             AutomationProperties.Name="{x:Static properties:Resources.BrandName}" />
 
     <Border Grid.Row="2" Classes="card">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
         <StackPanel HorizontalAlignment="Center" Spacing="8">
-          <Image Source="{Binding Icon}" Width="96" Height="96" Stretch="Uniform" />
+          <Image Source="{Binding Icon}" Width="104" Height="104" Stretch="Uniform"
+                 AutomationProperties.Name="{x:Static properties:Resources.Icon}" />
           <TextBlock Text="{x:Static properties:Resources.Icon}" HorizontalAlignment="Center" Opacity="0.7" />
         </StackPanel>
-        <Button Grid.Column="1" Content="{x:Static properties:Resources.OpenIconFile}"
+        <Button Classes="dialog-control" Grid.Column="1" Content="{x:Static properties:Resources.OpenIconFile}"
                 Command="{Binding SelectIconAsyncCommand}"
-                VerticalAlignment="Center" />
+                VerticalAlignment="Center"
+                AutomationProperties.Name="{x:Static properties:Resources.OpenIconFile}" />
       </Grid>
     </Border>
 
     <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-      <Button Content="{x:Static properties:Resources.Cancel}" Command="{Binding CancelCommand}" />
-      <Button Content="{x:Static properties:Resources.Save}" Command="{Binding AddBrandAsyncCommand}" Classes="accent" />
+      <Button Classes="dialog-control" Content="{x:Static properties:Resources.Cancel}" Command="{Binding CancelCommand}" />
+      <Button Classes="dialog-control accent" Content="{x:Static properties:Resources.Save}" Command="{Binding AddBrandAsyncCommand}" />
     </StackPanel>
   </Grid>
 </UserControl>

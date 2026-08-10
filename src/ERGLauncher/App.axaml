@@ -4,5 +4,34 @@
              RequestedThemeVariant="Default">
   <Application.Styles>
     <FluentTheme />
+    <Style Selector="Button.dialog-control">
+      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="Padding" Value="14,8" />
+    </Style>
+    <Style Selector="TextBox.form-control, ComboBox.form-control">
+      <Setter Property="MinHeight" Value="40" />
+    </Style>
   </Application.Styles>
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="AppPageBrush" Color="#FFF8F8FC" />
+          <SolidColorBrush x:Key="AppCardBrush" Color="#FFFFFFFF" />
+          <SolidColorBrush x:Key="AppCardBorderBrush" Color="#22000000" />
+          <SolidColorBrush x:Key="AppCardHoverBrush" Color="#0F5B5BD6" />
+          <SolidColorBrush x:Key="AppCardSelectedBrush" Color="#1F5B5BD6" />
+          <SolidColorBrush x:Key="AppAccentBrush" Color="#5B5BD6" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="AppPageBrush" Color="#18181C" />
+          <SolidColorBrush x:Key="AppCardBrush" Color="#24242A" />
+          <SolidColorBrush x:Key="AppCardBorderBrush" Color="#35FFFFFF" />
+          <SolidColorBrush x:Key="AppCardHoverBrush" Color="#255B5BD6" />
+          <SolidColorBrush x:Key="AppCardSelectedBrush" Color="#405B5BD6" />
+          <SolidColorBrush x:Key="AppAccentBrush" Color="#A6A6FF" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
 </Application>
