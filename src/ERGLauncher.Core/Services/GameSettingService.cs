@@ -29,10 +29,10 @@ public sealed class GameSettingService : IGameSettingService
         var rootItem = SettingJsonSerializer.DeserializeGameSettings(json) ?? new RootItem([]);
         foreach (var brand in rootItem.Brands)
         {
-            brand.Icon = await this.LoadIconAsync(brand.IconPath, cancellationToken).ConfigureAwait(false);
+            brand.Icon = await this.LoadIconAsync(brand.IconPath, useDefaultIcon: false, cancellationToken: cancellationToken).ConfigureAwait(false);
             foreach (var product in brand.Products)
             {
-                product.Icon = await this.LoadIconAsync(product.IconPath, cancellationToken).ConfigureAwait(false);
+                product.Icon = await this.LoadIconAsync(product.IconPath, useDefaultIcon: true, cancellationToken: cancellationToken).ConfigureAwait(false);
                 product.BrandName = brand.Name;
             }
         }
@@ -50,7 +50,7 @@ public sealed class GameSettingService : IGameSettingService
     public async ValueTask<Brand> CreateBrandItemAsync(string name, string? iconFilePath, CancellationToken cancellationToken = default)
     {
         var brand = new Brand([]) { Name = name, IconPath = iconFilePath };
-        brand.Icon = await this.LoadIconAsync(iconFilePath, cancellationToken).ConfigureAwait(false);
+        brand.Icon = await this.LoadIconAsync(iconFilePath, useDefaultIcon: false, cancellationToken).ConfigureAwait(false);
         return brand;
     }
 
@@ -68,13 +68,16 @@ public sealed class GameSettingService : IGameSettingService
             BrandName = brandName,
             Path = gameFilePath,
         };
-        product.Icon = await this.LoadIconAsync(iconFilePath, cancellationToken).ConfigureAwait(false);
+        product.Icon = await this.LoadIconAsync(iconFilePath, useDefaultIcon: true, cancellationToken: cancellationToken).ConfigureAwait(false);
         return product;
     }
 
-    private ValueTask<Avalonia.Media.Imaging.Bitmap?> LoadIconAsync(string? iconFilePath, CancellationToken cancellationToken)
+    private ValueTask<Avalonia.Media.Imaging.Bitmap?> LoadIconAsync(
+        string? iconFilePath,
+        bool useDefaultIcon,
+        CancellationToken cancellationToken)
     {
-        var path = string.IsNullOrWhiteSpace(iconFilePath) ? this.defaultIconFilePath : iconFilePath;
+        var path = string.IsNullOrWhiteSpace(iconFilePath) && useDefaultIcon ? this.defaultIconFilePath : iconFilePath;
         return this.fileService.CreateBitmapAsync(path, cancellationToken);
     }
 }

@@ -60,7 +60,10 @@ internal static class ItemConversion
                     Path = product.Path,
                     BrandName = product.BrandName,
                 };
-                viewProduct.Icon = await fileService.CreateBitmapAsync(product.IconPath, cancellationToken).ConfigureAwait(true);
+                var iconPath = string.IsNullOrWhiteSpace(product.IconPath)
+                    ? fileService.GetDefaultIconFilePath()
+                    : product.IconPath;
+                viewProduct.Icon = await fileService.CreateBitmapAsync(iconPath, cancellationToken).ConfigureAwait(true);
                 return viewProduct;
             }
 

@@ -33,6 +33,9 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets/**" />
+    <Content Include="Assets/icon.png"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

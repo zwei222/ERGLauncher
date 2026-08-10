@@ -105,6 +105,32 @@ public sealed class MainViewModelTests
             .ExecuteAsync("/games/title", Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task LoadingUsesDefaultIconOnlyForProductsWithoutConfiguredIcons()
+    {
+        var productWithoutIcon = new CoreProduct { Name = "Default", BrandName = "Studio", Path = "/games/default" };
+        var productWithIcon = new CoreProduct
+        {
+            Name = "Explicit",
+            BrandName = "Studio",
+            Path = "/games/explicit",
+            IconPath = "/icons/explicit.png",
+        };
+        var brand = new CoreBrand([productWithoutIcon, productWithIcon]) { Name = "Studio" };
+        var services = CreateServices(new CoreRootItem([brand]));
+        const string defaultIconPath = "/published/Assets/icon.png";
+        services.FileService.GetDefaultIconFilePath().Returns(defaultIconPath);
+
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+
+        await services.FileService.Received(1)
+            .CreateBitmapAsync(defaultIconPath, Arg.Any<CancellationToken>());
+        await services.FileService.Received(1)
+            .CreateBitmapAsync("/icons/explicit.png", Arg.Any<CancellationToken>());
+        await services.FileService.Received(1)
+            .CreateBitmapAsync(null, Arg.Any<CancellationToken>());
+    }
+
     private static TestServices CreateServices(CoreRootItem root)
     {
         var fileService = Substitute.For<IFileService>();

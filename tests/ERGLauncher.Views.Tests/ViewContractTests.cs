@@ -110,11 +110,12 @@ public class ViewContractTests
     }
 
     [Test]
-    public async Task MainView_UsesConfiguredAvaloniaIcon()
+    public async Task MainView_UsesIcoAndNeverPngAsWindowIcon()
     {
         var source = await File.ReadAllTextAsync(Path.Combine(ViewsDirectory, "MainView.axaml"));
 
-        await Assert.That(source).Contains("Icon=\"avares://ERGLauncher/Assets/icon.png\"");
+        await Assert.That(source).Contains("Icon=\"avares://ERGLauncher/Assets/icon.ico\"");
+        await Assert.That(source).DoesNotContain("Icon=\"avares://ERGLauncher/Assets/icon.png\"");
     }
 
     [Test]
@@ -124,6 +125,9 @@ public class ViewContractTests
 
         await Assert.That(project).Contains("<ApplicationIcon>Assets/icon.ico</ApplicationIcon>");
         await Assert.That(project).Contains("<AvaloniaResource Include=\"Assets/**\" />");
+        await Assert.That(project).Contains("<Content Include=\"Assets/icon.png\"");
+        await Assert.That(project).Contains("CopyToOutputDirectory=\"PreserveNewest\"");
+        await Assert.That(project).Contains("CopyToPublishDirectory=\"PreserveNewest\"");
         await Assert.That(project).Contains("<Version>2.0.0</Version>");
         await Assert.That(project).Contains("<AssemblyVersion>2.0.0.0</AssemblyVersion>");
         await Assert.That(project).Contains("<FileVersion>2.0.0.0</FileVersion>");
@@ -135,10 +139,39 @@ public class ViewContractTests
         await Assert.That(new FileInfo(pngPath).Length).IsGreaterThan(0L);
 
         var ico = await File.ReadAllBytesAsync(icoPath);
+        await Assert.That(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(ico)).ToLowerInvariant())
+            .IsEqualTo("21cb42e92a6b9aead1cb0057e4428ffc722f650408c3db120a18ac50503c1672");
         await Assert.That(ico.Length).IsGreaterThanOrEqualTo(6);
         await Assert.That(BinaryPrimitives.ReadUInt16LittleEndian(ico.AsSpan(0, 2))).IsEqualTo((ushort)0);
         await Assert.That(BinaryPrimitives.ReadUInt16LittleEndian(ico.AsSpan(2, 2))).IsEqualTo((ushort)1);
-        await Assert.That(BinaryPrimitives.ReadUInt16LittleEndian(ico.AsSpan(4, 2))).IsGreaterThan((ushort)0);
+        await Assert.That(BinaryPrimitives.ReadUInt16LittleEndian(ico.AsSpan(4, 2))).IsEqualTo((ushort)6);
+        await Assert.That(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(await File.ReadAllBytesAsync(pngPath))).ToLowerInvariant())
+            .IsEqualTo("50a705ed9e94924bdd95908123e35e8d2ec887927bc3dce04d1bdf8bf9551a84");
+    }
+
+    [Test]
+    public async Task AppDialogControlCentersAllButtonContent()
+    {
+        var source = await File.ReadAllTextAsync(Path.Combine(ProjectDirectory, "App.axaml"));
+
+        await Assert.That(source).Contains("<Style Selector=\"Button.dialog-control\">");
+        await Assert.That(source).Contains("<Setter Property=\"HorizontalContentAlignment\" Value=\"Center\" />");
+        await Assert.That(source).Contains("<Setter Property=\"VerticalContentAlignment\" Value=\"Center\" />");
+    }
+
+    [Test]
+    public async Task SettingsButtonUsesNewAccessibleGearPath()
+    {
+        var source = await File.ReadAllTextAsync(Path.Combine(ViewsDirectory, "MainView.axaml"));
+        const string oldRadialPath = "M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M4.93,4.93";
+        const string gearPath = "M19.43,12.98 C19.47,12.66";
+
+        await Assert.That(source).Contains(gearPath);
+        await Assert.That(source).DoesNotContain(oldRadialPath);
+        await Assert.That(source).Contains("Command=\"{Binding OpenSettingCommand}\"");
+        await Assert.That(source).Contains("ToolTip.Tip=\"{x:Static properties:Resources.Setting}\"");
+        await Assert.That(source).Contains("AutomationProperties.Name=\"{x:Static properties:Resources.Setting}\"");
+        await Assert.That(source).Contains("Width=\"18\" Height=\"18\"");
     }
 
     [Test]

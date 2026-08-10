@@ -12,7 +12,7 @@
         d:DesignWidth="900"
         d:DesignHeight="620"
         Title="ERG Launcher"
-        Icon="avares://ERGLauncher/Assets/icon.png"
+        Icon="avares://ERGLauncher/Assets/icon.ico"
         OpenedCommand="{Binding LoadSettingAsyncCommand}"
         ClosingCommand="{Binding SaveAppSettingAsyncCommand}"
         Width="900"
@@ -78,7 +78,7 @@
                 Command="{Binding OpenSettingCommand}"
                 ToolTip.Tip="{x:Static properties:Resources.Setting}"
                 AutomationProperties.Name="{x:Static properties:Resources.Setting}">
-          <PathIcon Width="18" Height="18" Data="M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M4.93,4.93 L7.05,7.05 M16.95,16.95 L19.07,19.07 M19.07,4.93 L16.95,7.05 M7.05,16.95 L4.93,19.07 M2,12 L5,12 M19,12 L22,12 M12,2 L12,5 M12,19 L12,22" />
+          <PathIcon Width="18" Height="18" Data="M19.43,12.98 C19.47,12.66 19.5,12.34 19.5,12 C19.5,11.66 19.47,11.34 19.42,11.02 L21.54,9.37 L19.54,5.91 L17.04,6.91 C16.54,6.52 15.98,6.2 15.37,5.98 L15,3.32 L11,3.32 L10.63,5.98 C10.02,6.2 9.46,6.52 8.96,6.91 L6.46,5.91 L4.46,9.37 L6.58,11.02 C6.53,11.34 6.5,11.66 6.5,12 C6.5,12.34 6.53,12.66 6.58,12.98 L4.46,14.63 L6.46,18.09 L8.96,17.09 C9.46,17.48 10.02,17.8 10.63,18.02 L11,20.68 L15,20.68 L15.37,18.02 C15.98,17.8 16.54,17.48 17.04,17.09 L19.54,18.09 L21.54,14.63 Z M13,15.5 A3.5,3.5 0 1 1 13,8.5 A3.5,3.5 0 0 1 13,15.5 Z" />
         </Button>
       </Grid>
     </Border>
