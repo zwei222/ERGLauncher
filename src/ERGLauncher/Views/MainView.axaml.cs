@@ -2,11 +2,9 @@ using System;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Selection;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using Avalonia.VisualTree;
 using ERGLauncher.Core;
 
 namespace ERGLauncher.Views;
@@ -48,10 +46,6 @@ public partial class MainView : Window
             RoutingStrategies.Bubble, handledEventsToo: true);
     }
 
-    private void OnListSelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-    }
-
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.Pointer.Type != PointerType.Mouse)
@@ -72,8 +66,11 @@ public partial class MainView : Window
             return;
         }
 
-        if (updateKind != PointerUpdateKind.LeftButtonPressed ||
-            !TryGetMainListItem(e.Source, out var item) ||
+    }
+
+    private void OnItemTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Border { DataContext: Item item } ||
             DataContext is not IMainViewDataContext viewModel ||
             !viewModel.SelectItemAsyncCommand.CanExecute(item))
         {
@@ -82,6 +79,28 @@ public partial class MainView : Window
 
         viewModel.SelectItemAsyncCommand.Execute(item);
         e.Handled = true;
+    }
+
+    private void OnEditItemClick(object? sender, RoutedEventArgs e) =>
+        ExecuteItemCommand(sender, static viewModel => viewModel.EditItemAsyncCommand);
+
+    private void OnRemoveItemClick(object? sender, RoutedEventArgs e) =>
+        ExecuteItemCommand(sender, static viewModel => viewModel.RemoveItemAsyncCommand);
+
+    private void ExecuteItemCommand(object? sender, Func<IMainViewDataContext, ICommand> commandSelector)
+    {
+        if (sender is not MenuItem menuItem ||
+            menuItem.DataContext is not Item item ||
+            DataContext is not IMainViewDataContext viewModel)
+        {
+            return;
+        }
+
+        var command = commandSelector(viewModel);
+        if (command.CanExecute(item))
+        {
+            command.Execute(item);
+        }
     }
 
     private void OnNavigationKeyDown(object? sender, KeyEventArgs e)
@@ -116,8 +135,13 @@ public partial class MainView : Window
 
     private void OnActivationKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key is not (Key.Enter or Key.Space) ||
-            !TryGetMainListItem(e.Source, out var item) ||
+        if (!MainViewKeyboardActivation.TryGetActivationItem(
+                e.Key,
+                e.KeyModifiers,
+                e.Source,
+                TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement(),
+                _mainListBox,
+                out var item) ||
             DataContext is not IMainViewDataContext viewModel ||
             !viewModel.SelectItemAsyncCommand.CanExecute(item))
         {
@@ -128,39 +152,6 @@ public partial class MainView : Window
         e.Handled = true;
     }
 
-    private bool TryGetMainListItem(object? source, out Item item)
-    {
-        item = null!;
-        if (source is not Visual visual)
-        {
-            return false;
-        }
-
-        var listBoxItem = visual.FindAncestorOfType<ListBoxItem>(includeSelf: true);
-        if (listBoxItem?.DataContext is not Item listItem ||
-            !IsDescendantOfMainList(listBoxItem))
-        {
-            return false;
-        }
-
-        item = listItem;
-        return true;
-    }
-
-    private bool IsDescendantOfMainList(Visual visual)
-    {
-        for (Visual? current = visual;
-             current is not null;
-             current = Avalonia.VisualTree.VisualExtensions.GetVisualParent(current))
-        {
-            if (ReferenceEquals(current, _mainListBox))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     private bool ExecuteNavigationCommand(Func<IMainViewDataContext, ICommand> commandSelector)
     {

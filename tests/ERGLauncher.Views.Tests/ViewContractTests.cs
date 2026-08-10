@@ -124,7 +124,6 @@ public class ViewContractTests
         var source = await File.ReadAllTextAsync(Path.Combine(ViewsDirectory, "MainView.axaml"));
 
         await Assert.That(source).Contains("<PathIcon");
-        await Assert.That(source).Contains("{x:Static properties:Resources.MoreActions}");
         foreach (var command in new[]
                  {
                      "BackCommand",
@@ -142,15 +141,15 @@ public class ViewContractTests
     }
 
     [Test]
-    public async Task MainView_UsesSelectionEventAndOverflowForSecondaryItemActions()
+    public async Task MainView_UsesPerItemContextMenuForSecondaryItemActions()
     {
         var source = await File.ReadAllTextAsync(Path.Combine(ViewsDirectory, "MainView.axaml"));
 
-        await Assert.That(source).Contains("SelectionChanged=\"OnListSelectionChanged\"");
-        await Assert.That(source).DoesNotContain("CommandParameter=\"{Binding}\"");
-        await Assert.That(source).Contains("<MenuFlyout>");
-        await Assert.That(source).Contains("EditItemAsyncCommand");
-        await Assert.That(source).Contains("RemoveItemAsyncCommand");
+        await Assert.That(source).DoesNotContain("SelectionChanged=\"OnListSelectionChanged\"");
+        await Assert.That(source).DoesNotContain("MoreActions");
+        await Assert.That(source).Contains("<ContextMenu>");
+        await Assert.That(source).Contains("Click=\"OnEditItemClick\"");
+        await Assert.That(source).Contains("Click=\"OnRemoveItemClick\"");
         await Assert.That(source).Contains("HorizontalScrollBarVisibility=\"Disabled\"");
         await Assert.That(source).Contains("VerticalScrollBarVisibility=\"Auto\"");
     }

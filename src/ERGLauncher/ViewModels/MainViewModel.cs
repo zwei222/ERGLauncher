@@ -80,8 +80,8 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
         ForwardCommand = new RelayCommand(GoForward, () => !IsBusy && IsEnabledForward);
         SelectItemAsyncCommand = new AsyncRelayCommand<Item>(SelectItemAsync, _ => !IsBusy);
         AddItemAsyncCommand = new AsyncRelayCommand(AddItemAsync, () => !IsBusy);
-        EditItemAsyncCommand = new AsyncRelayCommand(EditItemAsync, CanEditOrRemove);
-        RemoveItemAsyncCommand = new AsyncRelayCommand(RemoveItemAsync, CanEditOrRemove);
+        EditItemAsyncCommand = new AsyncRelayCommand<Item>(EditItemAsync, CanEditOrRemove);
+        RemoveItemAsyncCommand = new AsyncRelayCommand<Item>(RemoveItemAsync, CanEditOrRemove);
         OpenSettingCommand = new AsyncRelayCommand(OpenSettingAsync, () => !IsBusy);
         LoadSettingAsyncCommand = new AsyncRelayCommand(LoadSettingAsync, () => !IsBusy);
         SaveAppSettingAsyncCommand = new AsyncRelayCommand(SaveAppSettingAsync, () => !IsBusy);
@@ -97,9 +97,9 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
 
     public IAsyncRelayCommand AddItemAsyncCommand { get; }
 
-    public IAsyncRelayCommand EditItemAsyncCommand { get; }
+    public IAsyncRelayCommand<Item> EditItemAsyncCommand { get; }
 
-    public IAsyncRelayCommand RemoveItemAsyncCommand { get; }
+    public IAsyncRelayCommand<Item> RemoveItemAsyncCommand { get; }
 
     public IAsyncRelayCommand OpenSettingCommand { get; }
 
@@ -127,15 +127,9 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
 
     private Item? CurrentItem => currentItem;
 
-    partial void OnSelectedItemChanged(Item? value)
-    {
-        EditItemAsyncCommand.NotifyCanExecuteChanged();
-        RemoveItemAsyncCommand.NotifyCanExecuteChanged();
-    }
-
     protected override void OnBusyStateChanged() => NotifyCommandStates();
 
-    private bool CanEditOrRemove() => !IsBusy && SelectedItem is not null;
+    private bool CanEditOrRemove(Item? item) => !IsBusy && item is not null;
 
     private void GoBack()
     {
@@ -215,7 +209,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
         }
     }
 
-    private async Task EditItemAsync()
+    private async Task EditItemAsync(Item? item)
     {
         var dialogName = CurrentItem switch
         {
@@ -224,13 +218,13 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
             _ => null,
         };
 
-        if (dialogName is null || SelectedItem is null)
+        if (dialogName is null || item is null)
         {
             return;
         }
 
         using var busy = BeginBusy();
-        var result = await viewDialogService.ShowDialogAsync(dialogName, SelectedItem).ConfigureAwait(true);
+        var result = await viewDialogService.ShowDialogAsync(dialogName, item).ConfigureAwait(true);
         if (!result.Accepted)
         {
             return;
@@ -239,17 +233,16 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
         switch (result.Value)
         {
             case Brand brand:
-                await EditCoreItemAsync(brand.Name, brand.IconPath, string.Empty).ConfigureAwait(true);
+                await EditCoreItemAsync(item, brand.Name, brand.IconPath, string.Empty).ConfigureAwait(true);
                 break;
             case Product product:
-                await EditCoreItemAsync(product.Name, product.IconPath, product.Path).ConfigureAwait(true);
+                await EditCoreItemAsync(item, product.Name, product.IconPath, product.Path).ConfigureAwait(true);
                 break;
         }
     }
 
-    private async Task RemoveItemAsync()
+    private async Task RemoveItemAsync(Item? item)
     {
-        var item = SelectedItem;
         if (item is null)
         {
             return;
@@ -346,14 +339,8 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
         await RefreshCurrentViewAsync().ConfigureAwait(true);
     }
 
-    private async Task EditCoreItemAsync(string name, string? iconPath, string filePath)
+    private async Task EditCoreItemAsync(Item target, string name, string? iconPath, string filePath)
     {
-        var target = SelectedItem;
-        if (target is null)
-        {
-            return;
-        }
-
         switch (CurrentItem, target)
         {
             case (RootItem, Brand brandView):

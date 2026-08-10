@@ -38,6 +38,26 @@ public sealed class MainViewModelTests
     }
 
     [Test]
+    public async Task RemoveItemCommandUsesTheSuppliedItemInsteadOfSelection()
+    {
+        var firstBrand = new CoreBrand([]) { Name = "First studio" };
+        var secondBrand = new CoreBrand([]) { Name = "Second studio" };
+        var services = CreateServices(new CoreRootItem([firstBrand, secondBrand]));
+        services.Dialogs
+            .ShowConfirmationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(true));
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+        var secondViewBrand = services.ViewModel.Items.OfType<ViewBrand>().Single(brand => brand.Name == "Second studio");
+
+        await services.ViewModel.RemoveItemAsyncCommand.ExecuteAsync(secondViewBrand);
+
+        await services.Dialogs.Received(1)
+            .ShowConfirmationAsync("Second studio", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await Assert.That(services.ViewModel.Items).HasSingleItem();
+        await Assert.That(services.ViewModel.Items.Single().Name).IsEqualTo("First studio");
+    }
+
+    [Test]
     public async Task BrandNavigationClearsSelectionBeforeChangingItemsAndPreservesHistory()
     {
         var firstProduct = new CoreProduct { Name = "First title", BrandName = "First studio", Path = "/games/first" };
