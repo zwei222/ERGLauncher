@@ -8,6 +8,10 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Avalonia.Headless" Version="12.1.1" />
     <PackageReference Include="TUnit" Version="1.64.6" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/ERGLauncher/ERGLauncher.csproj" />
   </ItemGroup>
 </Project>

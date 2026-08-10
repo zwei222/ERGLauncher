@@ -23,10 +23,10 @@ public partial class SettingView : UserControl
         new(ERGLauncher.Core.Theme.Dark, Properties.Resources.DarkTheme),
     ];
 
-    public sealed record ThemeChoice(ERGLauncher.Core.Theme Value, string DisplayName);
-
     public SettingView()
     {
         AvaloniaXamlLoader.Load(this);
     }
 }
+
+public sealed record ThemeChoice(ERGLauncher.Core.Theme Value, string DisplayName);

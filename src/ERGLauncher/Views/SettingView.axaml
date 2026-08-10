@@ -3,9 +3,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:properties="using:ERGLauncher.Properties"
              xmlns:views="using:ERGLauncher.Views"
+             xmlns:vm="using:ERGLauncher.ViewModels"
+             xmlns:globalization="using:System.Globalization"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
+             x:CompileBindings="True"
+             x:DataType="vm:SettingViewModel"
              d:DesignWidth="560"
              d:DesignHeight="400">
   <Grid RowDefinitions="Auto,*,Auto" Margin="24" RowSpacing="20">
@@ -25,7 +29,7 @@
                     SelectedItem="{Binding SelectedLanguage}" HorizontalAlignment="Stretch"
                     AutomationProperties.Name="{x:Static properties:Resources.SelectLanguage}">
             <ComboBox.ItemTemplate>
-              <DataTemplate>
+              <DataTemplate x:DataType="globalization:CultureInfo">
                 <TextBlock Text="{Binding NativeName}" />
               </DataTemplate>
             </ComboBox.ItemTemplate>
@@ -41,7 +45,7 @@
                     HorizontalAlignment="Stretch"
                     AutomationProperties.Name="{x:Static properties:Resources.SelectTheme}">
             <ComboBox.ItemTemplate>
-              <DataTemplate>
+              <DataTemplate x:DataType="views:ThemeChoice">
                 <TextBlock Text="{Binding DisplayName}" />
               </DataTemplate>
             </ComboBox.ItemTemplate>

@@ -39,8 +39,7 @@ public partial class MainView : Window
     public MainView()
     {
         AvaloniaXamlLoader.Load(this);
-        _mainListBox = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(this)
-            .OfType<ListBox>().Single();
+        _mainListBox = MainListBox;
 
         AddHandler(InputElement.PointerPressedEvent, OnPointerPressed,
             RoutingStrategies.Bubble, handledEventsToo: true);

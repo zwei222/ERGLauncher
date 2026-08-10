@@ -46,8 +46,12 @@ printf 'NUGET_PACKAGES: %s\n' "$NUGET_PACKAGES" | tee -a "$LOG"
 printf 'NUGET_HTTP_CACHE_PATH: %s\n' "$NUGET_HTTP_CACHE_PATH" | tee -a "$LOG"
 printf 'DOTNET_CLI_HOME: %s\n' "$DOTNET_CLI_HOME" | tee -a "$LOG"
 printf 'Reserved test results: %s\n' "$TEST_RESULTS_DIR" | tee -a "$LOG"
-printf 'Command: dotnet run --project %s -c Release --no-build -- --settings-smoke %s\n' "$PROJECT" "$RUN_ROOT" | tee -a "$LOG"
-if ! dotnet run --project "$PROJECT" -c Release --no-build -- --settings-smoke "$RUN_ROOT" 2>&1 | tee -a "$LOG"; then
+printf 'Command: dotnet restore %s\n' "$PROJECT" | tee -a "$LOG"
+dotnet restore "$PROJECT" 2>&1 | tee -a "$LOG"
+printf 'Command: dotnet build %s -c Release --no-restore\n' "$PROJECT" | tee -a "$LOG"
+dotnet build "$PROJECT" -c Release --no-restore 2>&1 | tee -a "$LOG"
+printf 'Command: dotnet run --project %s -c Release --no-build --no-restore -- --settings-smoke %s\n' "$PROJECT" "$RUN_ROOT" | tee -a "$LOG"
+if ! dotnet run --project "$PROJECT" -c Release --no-build --no-restore -- --settings-smoke "$RUN_ROOT" 2>&1 | tee -a "$LOG"; then
     printf 'Settings smoke command failed; log: %s\n' "$LOG" >&2
     exit 1
 fi

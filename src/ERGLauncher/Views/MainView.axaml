@@ -114,7 +114,8 @@
       </Button>
     </Grid>
 
-    <ListBox Grid.Row="2"
+    <ListBox x:Name="MainListBox"
+             Grid.Row="2"
              Margin="20,0,0,0"
              ItemsSource="{Binding Items}"
              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"

@@ -1,5 +1,109 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Threading;
+using ERGLauncher.Views;
+
 namespace ERGLauncher.Views.Tests;
 
+public static class AvaloniaTestSession
+{
+    private static AvaloniaUiThreadHost? _host;
+
+    [Before(TestSession)]
+    public static void Initialize()
+    {
+        _host = new AvaloniaUiThreadHost();
+        _host.Start();
+    }
+
+    [After(TestSession)]
+    public static void Shutdown()
+    {
+        _host?.Dispose();
+        _host = null;
+    }
+
+    public static Task<T> RunAsync<T>(Func<T> callback) =>
+        (_host ?? throw new InvalidOperationException("Avalonia test session is not initialized."))
+            .InvokeAsync(callback);
+
+    private sealed class AvaloniaUiThreadHost : IDisposable
+    {
+        private readonly CancellationTokenSource _shutdown = new();
+        private readonly TaskCompletionSource<object?> _started =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<object?> _completed =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly Thread _thread;
+
+        public AvaloniaUiThreadHost()
+        {
+            _thread = new Thread(Run)
+            {
+                IsBackground = true,
+                Name = "ERGLauncher Avalonia test UI thread"
+            };
+        }
+
+        public void Start()
+        {
+            _thread.Start();
+            _started.Task.GetAwaiter().GetResult();
+        }
+
+        public Task<T> InvokeAsync<T>(Func<T> callback)
+        {
+            var completion = new TaskCompletionSource<T>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    completion.SetResult(callback());
+                }
+                catch (Exception exception)
+                {
+                    completion.SetException(exception);
+                }
+            });
+            return completion.Task;
+        }
+
+        public void Dispose()
+        {
+            _shutdown.Cancel();
+            _thread.Join();
+            _shutdown.Dispose();
+            _completed.Task.GetAwaiter().GetResult();
+        }
+
+        private void Run()
+        {
+            try
+            {
+                AppBuilder.Configure<Application>()
+                    .UseHeadless(new AvaloniaHeadlessPlatformOptions())
+                    .SetupWithoutStarting();
+                _started.TrySetResult(null);
+                Dispatcher.UIThread.MainLoop(_shutdown.Token);
+            }
+            catch (Exception exception)
+            {
+                if (!_started.TrySetException(exception))
+                {
+                    _completed.TrySetException(exception);
+                }
+            }
+            finally
+            {
+                _completed.TrySetResult(null);
+            }
+        }
+    }
+}
+
+[NotInParallel]
 public class MainViewInputContractTests
 {
     private static readonly string MainViewCodePath = Path.GetFullPath(Path.Combine(
@@ -8,6 +112,18 @@ public class MainViewInputContractTests
 
     private static async Task<string> ReadMainViewCodeAsync() =>
         await File.ReadAllTextAsync(MainViewCodePath);
+
+    [Test]
+    public async Task MainViewLoadsXamlAndResolvesMainListBox()
+    {
+        var listBox = await AvaloniaTestSession.RunAsync(() =>
+        {
+            var view = new MainView();
+            return view.FindControl<ListBox>("MainListBox");
+        });
+
+        await Assert.That(listBox).IsNotNull();
+    }
 
     [Test]
     public async Task SelectionChangedHandlerDoesNotExecuteItemCommand()
@@ -31,7 +147,7 @@ public class MainViewInputContractTests
         await Assert.That(source).Contains("handledEventsToo: true");
         await Assert.That(source).Contains("PointerUpdateKind.LeftButtonPressed");
         await Assert.That(source).Contains("FindAncestorOfType<ListBoxItem>(includeSelf: true)");
-        await Assert.That(source).Contains("Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(this)");
+        await Assert.That(source).Contains("_mainListBox = MainListBox;");
         await Assert.That(source).Contains("SelectItemAsyncCommand.CanExecute(item)");
     }
 

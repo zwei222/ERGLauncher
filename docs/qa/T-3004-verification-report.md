@@ -7,6 +7,8 @@
 - 実行日時: 2026-07-24
 - 実行環境: Linux 7.0.9+parrot7-amd64, x64, .NET SDK 10.0.302
 
+> **証跡の保持状態:** この文書は当時の検証結果を記録した履歴レポートです。下表のログ名は当時の実行時に参照した名称ですが、ログ本体は現在のリポジトリには保持されていません。そのため、チェックアウトだけから当時のPASSを独立検証することはできません。現在の状態を判定する場合は、後述の再検証手順を新規実行し、生成されたログと終了コードを同じ実行単位で保存してください。
+
 ## 修正内容
 
 1. `MainView.axaml` に `x:CompileBindings="True"` と `x:DataType="views:IMainViewDataContext"` を設定し、項目テンプレートにも `core:Item` の型を付与した。これにより到達可能な全 MainView binding が ReflectionBinding から compiled binding になった。
@@ -16,7 +18,7 @@
 
 ## 検証結果
 
-| ID | コマンド / 手順 | 結果 | 証跡 |
+| ID | コマンド / 手順 | 当時の結果 | 当時のログ名（現在は非保持） |
 |---|---|---|---|
 | B-01 | `dotnet build ERGLauncher.sln -c Release --no-restore --warnaserror --verbosity minimal` | PASS。警告 0、エラー 0、exit 0 | `build-warnaserror.log` |
 | T-01 | `dotnet test ERGLauncher.sln -c Release --no-restore --verbosity minimal` | PASS。62 passed / 0 failed / 0 skipped、exit 0 | `test-integration.log` |
@@ -25,6 +27,30 @@
 | S-02 | 同じ publish ELF を同じ保存先に対して別プロセスで再起動 | PASS。保存済み culture/theme/brand/product を再読込、exit 0 | `smoke-linux-x64.log` |
 | A-01 | Linux host で win-x64 Native AoT publish 可否を確認 | SDK が `Cross-OS native compilation is not supported.`、exit 1。Windows build 環境時のみの条件なので判定対象外 | `publish-win-x64.log` |
 
+
+## 再検証手順
+
+`--no-restore` は、同じ検証実行内で明示的なrestoreが成功した後にのみ使用する。現在のチェックアウトを検証する場合は、最低限次の順序で実行する。
+
+```sh
+./tools/verify-tests.sh
+
+dotnet restore ERGLauncher.sln
+mkdir -p qa-artifacts/verification
+RUN_ROOT="$(mktemp -d qa-artifacts/verification/aot-run-XXXXXX)"
+mkdir -p "$RUN_ROOT/settings"
+cp -- tests/ERGLauncher.Tests/Fixtures/appSettings.json "$RUN_ROOT/settings/appSettings.json"
+cp -- tests/ERGLauncher.Tests/Fixtures/gameSettings.json "$RUN_ROOT/settings/gameSettings.json"
+
+dotnet publish src/ERGLauncher/ERGLauncher.csproj \
+  -c Release -r linux-x64 --self-contained true \
+  -p:PublishAot=true --no-restore \
+  -o "$RUN_ROOT/publish"
+
+"$RUN_ROOT/publish/ERGLauncher" --settings-smoke "$RUN_ROOT"
+```
+
+判定時は、上記の完全な標準出力・標準エラー・終了コード、`$RUN_ROOT/publish`、および実行したバイナリのパスを同じ`$RUN_ROOT`配下へ保存する。`qa-artifacts/verification/` はGit管理外であるため、保持が必要な場合はCI artifactなど別の永続保管先へアップロードする。
 
 ## Linux publish smoke の具体的な確認値
 
