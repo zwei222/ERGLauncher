@@ -24,7 +24,7 @@
     </StackPanel>
 
     <TextBox Classes="form-control" Grid.Row="1" Text="{Binding Name}"
-             Watermark="{x:Static properties:Resources.ProductName}"
+             PlaceholderText="{x:Static properties:Resources.ProductName}"
              AutomationProperties.Name="{x:Static properties:Resources.ProductName}" />
 
     <Border Grid.Row="2" Classes="card">
@@ -42,7 +42,7 @@
     </Border>
 
     <Grid Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="8">
-      <TextBox Classes="form-control" Text="{Binding Path}" Watermark="{x:Static properties:Resources.ExecutableFile}"
+      <TextBox Classes="form-control" Text="{Binding Path}" PlaceholderText="{x:Static properties:Resources.ExecutableFile}"
                AutomationProperties.Name="{x:Static properties:Resources.ExecutableFile}" />
       <Button Classes="dialog-control" Grid.Column="1" Content="{x:Static properties:Resources.OpenExecutableFile}"
               Command="{Binding SelectFileAsyncCommand}"

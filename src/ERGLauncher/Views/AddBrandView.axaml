@@ -24,7 +24,7 @@
     </StackPanel>
 
     <TextBox Classes="form-control" Grid.Row="1" Text="{Binding Name}"
-             Watermark="{x:Static properties:Resources.BrandName}"
+             PlaceholderText="{x:Static properties:Resources.BrandName}"
              AutomationProperties.Name="{x:Static properties:Resources.BrandName}" />
 
     <Border Grid.Row="2" Classes="card">
