@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Xml.Linq;
 
 namespace ERGLauncher.Views.Tests;
@@ -7,6 +8,9 @@ public class ViewContractTests
     private static readonly string ViewsDirectory = Path.GetFullPath(Path.Combine(
         AppContext.BaseDirectory,
         "../../../../../src/ERGLauncher/Views"));
+    private static readonly string ProjectDirectory = Path.GetFullPath(Path.Combine(
+        ViewsDirectory,
+        ".."));
 
     [Arguments("MainView")]
     [Arguments("AddBrandView")]
@@ -79,6 +83,70 @@ public class ViewContractTests
 
         await Assert.That(source).Contains("OpenedCommand=\"{Binding LoadSettingAsyncCommand}\"");
         await Assert.That(source).Contains("ClosingCommand=\"{Binding SaveAppSettingAsyncCommand}\"");
+    }
+
+    [Test]
+    public async Task MainView_UsesOneContentTitleHeadingAndOptionalBrandContext()
+    {
+        var document = XDocument.Load(Path.Combine(ViewsDirectory, "MainView.axaml"));
+        XNamespace avalonia = "https://github.com/avaloniaui";
+        var contentHeader = document.Descendants(avalonia + "Grid")
+            .Single(grid => grid.Attribute("Grid.Row")?.Value == "1");
+        var headerTextBlocks = contentHeader.Descendants(avalonia + "TextBlock").ToArray();
+
+        await Assert.That(document.Root!.Attribute("Title")?.Value).IsEqualTo("ERG Launcher");
+        await Assert.That(headerTextBlocks.Count(textBlock =>
+                textBlock.Attribute("Text")?.Value == "{Binding Title}"))
+            .IsEqualTo(1);
+        await Assert.That(headerTextBlocks.Count(textBlock =>
+                textBlock.Attribute("Text")?.Value == "{Binding CurrentBrand}"))
+            .IsEqualTo(1);
+        await Assert.That(document.Descendants(avalonia + "TextBlock")
+                .Count(textBlock => textBlock.Attribute("Text")?.Value == "ERG Launcher"))
+            .IsEqualTo(0);
+        await Assert.That(document.Descendants(avalonia + "TextBlock")
+                .Count(textBlock => textBlock.Attribute("Text")?.Value == "{Binding Title}"))
+            .IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task MainView_UsesConfiguredAvaloniaIcon()
+    {
+        var source = await File.ReadAllTextAsync(Path.Combine(ViewsDirectory, "MainView.axaml"));
+
+        await Assert.That(source).Contains("Icon=\"avares://ERGLauncher/Assets/icon.png\"");
+    }
+
+    [Test]
+    public async Task Project_DeclaresIconResourcesAndVersionContract()
+    {
+        var project = await File.ReadAllTextAsync(Path.Combine(ProjectDirectory, "ERGLauncher.csproj"));
+
+        await Assert.That(project).Contains("<ApplicationIcon>Assets/icon.ico</ApplicationIcon>");
+        await Assert.That(project).Contains("<AvaloniaResource Include=\"Assets/**\" />");
+        await Assert.That(project).Contains("<Version>2.0.0</Version>");
+        await Assert.That(project).Contains("<AssemblyVersion>2.0.0.0</AssemblyVersion>");
+        await Assert.That(project).Contains("<FileVersion>2.0.0.0</FileVersion>");
+        await Assert.That(project).Contains("<InformationalVersion>2.0.0</InformationalVersion>");
+        var pngPath = Path.Combine(ProjectDirectory, "Assets", "icon.png");
+        var icoPath = Path.Combine(ProjectDirectory, "Assets", "icon.ico");
+        await Assert.That(File.Exists(pngPath)).IsTrue();
+        await Assert.That(File.Exists(icoPath)).IsTrue();
+        await Assert.That(new FileInfo(pngPath).Length).IsGreaterThan(0L);
+
+        var ico = await File.ReadAllBytesAsync(icoPath);
+        await Assert.That(ico.Length).IsGreaterThanOrEqualTo(6);
+        await Assert.That(BinaryPrimitives.ReadUInt16LittleEndian(ico.AsSpan(0, 2))).IsEqualTo((ushort)0);
+        await Assert.That(BinaryPrimitives.ReadUInt16LittleEndian(ico.AsSpan(2, 2))).IsEqualTo((ushort)1);
+        await Assert.That(BinaryPrimitives.ReadUInt16LittleEndian(ico.AsSpan(4, 2))).IsGreaterThan((ushort)0);
+    }
+
+    [Test]
+    public async Task WindowsManifest_UsesMajorVersionTwoIdentity()
+    {
+        var manifest = await File.ReadAllTextAsync(Path.Combine(ProjectDirectory, "app.manifest"));
+
+        await Assert.That(manifest).Contains("version=\"2.0.0.0\"");
     }
 
     [Test]
