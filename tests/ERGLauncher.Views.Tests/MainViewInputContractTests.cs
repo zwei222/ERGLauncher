@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using System.ComponentModel;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using ERGLauncher.Core;
@@ -233,6 +234,184 @@ public class MainViewInputContractTests
     }
 
     [Test]
+    public async Task MainViewDetachesPreviousDataContextPropertyChangedSubscription()
+    {
+        var result = await AvaloniaTestSession.RunAsync(() =>
+        {
+            var oldContext = new CountingMainViewDataContext(new Brand([]) { Name = "Old" });
+            var newContext = new CountingMainViewDataContext(new Brand([]) { Name = "New" });
+            var view = new MainView();
+
+            var subscriptionsBeforeAssignment = oldContext.PropertyChangedSubscriberCount;
+            view.DataContext = oldContext;
+            view.Show();
+            view.ApplyTemplate();
+            view.UpdateLayout();
+            var subscriptionsAfterAttach = oldContext.PropertyChangedSubscriberCount;
+
+            view.DataContext = newContext;
+            var oldSubscriptionAfterReplacement = oldContext.PropertyChangedSubscriberCount;
+            var newSubscriptionAfterReplacement = newContext.PropertyChangedSubscriberCount;
+            oldContext.RaiseSelectedItemChanged();
+            newContext.RaiseSelectedItemChanged();
+
+            view.DataContext = null;
+            return (oldSubscriptionAfterReplacement, newSubscriptionAfterReplacement,
+                oldContext.PropertyChangedSubscriberCount,
+                newContext.PropertyChangedSubscriberCount,
+                subscriptionsBeforeAssignment,
+                subscriptionsAfterAttach);
+        });
+
+        await Assert.That(result.Item1).IsEqualTo(0);
+        await Assert.That(result.Item2).IsEqualTo(1);
+        await Assert.That(result.Item3).IsEqualTo(0);
+        await Assert.That(result.Item4).IsEqualTo(0);
+        await Assert.That(result.Item5).IsEqualTo(0);
+        await Assert.That(result.Item6).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task MainViewScrollsRestoredSelectionIntoView()
+    {
+        var result = await AvaloniaTestSession.RunAsync(() =>
+        {
+            var items = Enumerable.Range(0, 40)
+                .Select(index => (Item)new Brand([]) { Name = $"Item {index}" })
+                .ToArray();
+            var dataContext = new CountingMainViewDataContext(items);
+            var view = new MainView { DataContext = dataContext };
+            PrepareView(view);
+
+            var listBox = view.FindControl<ListBox>("MainListBox")!;
+            var selectedItem = items[^1];
+            dataContext.SelectedItem = selectedItem;
+            Dispatcher.UIThread.RunJobs();
+            view.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+            view.UpdateLayout();
+
+            var container = GetRealizedItem(listBox, selectedItem);
+            var topLeft = container.TranslatePoint(new Point(0, 0), listBox)!.Value;
+            var bottomRight = container.TranslatePoint(
+                new Point(container.Bounds.Width, container.Bounds.Height), listBox)!.Value;
+            var visible = topLeft.Y >= 0 && bottomRight.Y <= listBox.Bounds.Height;
+            view.Close();
+            return (visible, listBox.Bounds.Height, topLeft.Y, bottomRight.Y);
+        });
+
+        await Assert.That(result.visible).IsTrue();
+        await Assert.That(result.Height).IsGreaterThan(0);
+    }
+
+    [Test]
+    public async Task MainViewResubscribesAndResumesScrollingAfterDetachAndReattach()
+    {
+        var result = await AvaloniaTestSession.RunAsync(() =>
+        {
+            var items = Enumerable.Range(0, 40)
+                .Select(index => (Item)new Brand([]) { Name = $"Item {index}" })
+                .ToArray();
+            var dataContext = new CountingMainViewDataContext(items);
+            var view = new MainView { DataContext = dataContext };
+            PrepareView(view);
+            view.Close();
+            var subscriptionsWhileDetached = dataContext.PropertyChangedSubscriberCount;
+            var reattachedView = new MainView { DataContext = dataContext };
+            PrepareView(reattachedView);
+            var reattachedListBox = reattachedView.FindControl<ListBox>("MainListBox")!;
+            var subscriptionsAfterReattach = dataContext.PropertyChangedSubscriberCount;
+
+            dataContext.SelectedItem = items[^1];
+            Dispatcher.UIThread.RunJobs();
+            view.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+            var container = GetRealizedItem(reattachedListBox, items[^1]);
+            var topLeft = container.TranslatePoint(new Point(0, 0), reattachedListBox)!.Value;
+            var bottomRight = container.TranslatePoint(
+                new Point(container.Bounds.Width, container.Bounds.Height), reattachedListBox)!.Value;
+            var visible = topLeft.Y >= 0 && bottomRight.Y <= reattachedListBox.Bounds.Height;
+            reattachedView.Close();
+            return (subscriptionsWhileDetached, subscriptionsAfterReattach, visible);
+        });
+
+        await Assert.That(result.subscriptionsWhileDetached).IsEqualTo(0);
+        await Assert.That(result.subscriptionsAfterReattach).IsEqualTo(1);
+        await Assert.That(result.visible).IsTrue();
+    }
+
+    [Test]
+    public async Task MainViewSuppressesQueuedScrollsFromReplacedContextAndDetachedView()
+    {
+        var result = await AvaloniaTestSession.RunAsync(() =>
+        {
+            static (double offset, bool oldItemVisible, bool currentItemVisible) Inspect(
+                MainView view, ListBox listBox, Item oldItem, Item currentItem)
+            {
+                view.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                view.UpdateLayout();
+                var scrollViewer = listBox.GetVisualDescendants().OfType<ScrollViewer>().Single();
+                var oldContainer = listBox.ContainerFromIndex(listBox.Items.IndexOf(oldItem)) as ListBoxItem;
+                var currentContainer = listBox.ContainerFromIndex(listBox.Items.IndexOf(currentItem)) as ListBoxItem;
+                return (scrollViewer.Offset.Y,
+                    oldContainer is not null && oldContainer.Bounds.Top >= 0 &&
+                    oldContainer.Bounds.Bottom <= listBox.Bounds.Height,
+                    currentContainer is not null && currentContainer.Bounds.Top >= 0 &&
+                    currentContainer.Bounds.Bottom <= listBox.Bounds.Height);
+            }
+
+            var oldItems = Enumerable.Range(0, 40)
+                .Select(index => (Item)new Brand([]) { Name = $"Old {index}" }).ToArray();
+            var currentItems = Enumerable.Range(0, 40)
+                .Select(index => (Item)new Brand([]) { Name = $"Current {index}" }).ToArray();
+            var oldContext = new CountingMainViewDataContext(oldItems);
+            var currentContext = new CountingMainViewDataContext(currentItems);
+            var view = new MainView { DataContext = oldContext };
+            PrepareView(view);
+            var listBox = view.FindControl<ListBox>("MainListBox")!;
+
+            oldContext.SelectedItem = oldItems[^1];
+            oldContext.RaiseSelectedItemChanged();
+            view.DataContext = currentContext;
+            listBox.ItemsSource = currentContext.Items;
+            Dispatcher.UIThread.RunJobs();
+            view.UpdateLayout();
+            var afterReplacement = Inspect(view, listBox, oldItems[^1], currentItems[^1]);
+            view.Close();
+
+            var currentView = new MainView { DataContext = currentContext };
+            PrepareView(currentView);
+            var currentListBox = currentView.FindControl<ListBox>("MainListBox")!;
+            currentContext.SelectedItem = currentItems[^1];
+            for (var pass = 0; pass < 3; pass++)
+            {
+                currentView.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+            }
+            var afterCurrentSelection = Inspect(currentView, currentListBox, oldItems[^1], currentItems[^1]);
+            var currentContextSubscriberCount = currentContext.PropertyChangedSubscriberCount;
+            currentView.Close();
+
+            var detachedContext = new CountingMainViewDataContext(oldItems);
+            var detachedView = new MainView { DataContext = detachedContext };
+            PrepareView(detachedView);
+            detachedContext.SelectedItem = oldItems[^1];
+            detachedView.Close();
+            Dispatcher.UIThread.RunJobs();
+            var afterClose = detachedContext.PropertyChangedSubscriberCount;
+
+            return (afterReplacement, afterCurrentSelection, afterClose, currentContextSubscriberCount);
+        });
+
+        await Assert.That(result.afterReplacement.oldItemVisible).IsFalse();
+        await Assert.That(result.afterReplacement.currentItemVisible).IsFalse();
+        await Assert.That(result.afterCurrentSelection.offset).IsGreaterThan(0);
+        await Assert.That(result.afterClose).IsEqualTo(0);
+        await Assert.That(result.currentContextSubscriberCount).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task ActivationHelperResolvesEnterAndSpaceToFocusedListBoxItems()
     {
         var result = await AvaloniaTestSession.RunAsync(() =>
@@ -433,6 +612,7 @@ public class MainViewInputContractTests
         }
     }
 
+
     private static ListBoxItem GetRealizedItem(ListBox listBox, Item item)
     {
         var byIndex = listBox.ContainerFromIndex(listBox.Items.IndexOf(item)) as ListBoxItem;
@@ -445,7 +625,7 @@ public class MainViewInputContractTests
             .Single(container => ReferenceEquals(container.DataContext, item));
     }
 
-    private sealed class CountingMainViewDataContext : IMainViewDataContext
+    private sealed class CountingMainViewDataContext : IMainViewDataContext, INotifyPropertyChanged
     {
         public CountingMainViewDataContext(params Item[] items)
         {
@@ -463,7 +643,47 @@ public class MainViewInputContractTests
         public bool IsEnabledBack => false;
         public bool IsEnabledForward => false;
         public string? CurrentBrand => null;
-        public Item? SelectedItem { get; set; }
+        private Item? selectedItem;
+        public Item? SelectedItem
+        {
+            get => selectedItem;
+            set
+            {
+                if (ReferenceEquals(selectedItem, value))
+                {
+                    return;
+                }
+
+                selectedItem = value;
+                propertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedItem)));
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged
+        {
+            add
+            {
+                propertyChanged += value;
+                if (value?.Method.Name == "OnViewModelPropertyChanged")
+                {
+                    propertyChangedSubscriberCount++;
+                }
+            }
+            remove
+            {
+                propertyChanged -= value;
+                if (value?.Method.Name == "OnViewModelPropertyChanged")
+                {
+                    propertyChangedSubscriberCount--;
+                }
+            }
+        }
+
+        private PropertyChangedEventHandler? propertyChanged;
+        private int propertyChangedSubscriberCount;
+        public int PropertyChangedSubscriberCount => propertyChangedSubscriberCount;
+        public void RaiseSelectedItemChanged() => propertyChanged?.Invoke(
+            this, new PropertyChangedEventArgs(nameof(SelectedItem)));
         public ObservableCollection<Item> Items { get; }
         public ICommand BackCommand { get; } = new CountingCommand();
         public ICommand ForwardCommand { get; } = new CountingCommand();

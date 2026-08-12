@@ -1,10 +1,13 @@
 using System;
+using System.ComponentModel;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using ERGLauncher.Core;
 
 namespace ERGLauncher.Views;
@@ -15,6 +18,9 @@ namespace ERGLauncher.Views;
 public partial class MainView : Window
 {
     private readonly ListBox _mainListBox;
+    private INotifyPropertyChanged? _subscribedDataContext;
+    private long _scrollGeneration;
+    private bool _isAttached;
 
     public static readonly StyledProperty<ICommand?> OpenedCommandProperty =
         AvaloniaProperty.Register<MainView, ICommand?>(nameof(OpenedCommand));
@@ -38,12 +44,52 @@ public partial class MainView : Window
     {
         AvaloniaXamlLoader.Load(this);
         _mainListBox = MainListBox;
+        DataContextChanged += OnDataContextChanged;
 
         AddHandler(InputElement.PointerPressedEvent, OnPointerPressed,
             RoutingStrategies.Bubble, handledEventsToo: true);
         AddHandler(InputElement.KeyDownEvent, OnNavigationKeyDown, RoutingStrategies.Tunnel);
         AddHandler(InputElement.KeyDownEvent, OnActivationKeyDown,
             RoutingStrategies.Bubble, handledEventsToo: true);
+    }
+
+    private void OnDataContextChanged(object? sender, EventArgs e)
+    {
+        InvalidatePendingScrolls();
+        if (_isAttached)
+        {
+            SubscribeToDataContext();
+        }
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(IMainViewDataContext.SelectedItem) ||
+            DataContext is not IMainViewDataContext viewModel ||
+            viewModel.SelectedItem is not Item selectedItem)
+        {
+            return;
+        }
+
+        var generation = _scrollGeneration;
+        var context = viewModel;
+        var selected = selectedItem;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (generation != _scrollGeneration ||
+                !_isAttached ||
+                !ReferenceEquals(DataContext, context) ||
+                !ReferenceEquals(context.SelectedItem, selected))
+            {
+                return;
+            }
+
+            var index = context.Items.IndexOf(selected);
+            if (index >= 0 && VisualRoot is not null && TopLevel.GetTopLevel(_mainListBox) is not null)
+            {
+                _mainListBox.ScrollIntoView(index);
+            }
+        });
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -185,5 +231,50 @@ public partial class MainView : Window
         }
 
         base.OnClosing(e);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _isAttached = false;
+        InvalidatePendingScrolls();
+        DetachDataContext();
+        DataContextChanged -= OnDataContextChanged;
+        base.OnClosed(e);
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        _isAttached = false;
+        InvalidatePendingScrolls();
+        DetachDataContext();
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _isAttached = true;
+        SubscribeToDataContext();
+    }
+
+    private void SubscribeToDataContext()
+    {
+        DetachDataContext();
+        if (_isAttached && DataContext is INotifyPropertyChanged notify)
+        {
+            notify.PropertyChanged += OnViewModelPropertyChanged;
+            _subscribedDataContext = notify;
+        }
+    }
+
+    private void InvalidatePendingScrolls() => _scrollGeneration++;
+
+    private void DetachDataContext()
+    {
+        if (_subscribedDataContext is not null)
+        {
+            _subscribedDataContext.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedDataContext = null;
+        }
     }
 }

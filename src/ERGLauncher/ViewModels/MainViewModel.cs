@@ -39,6 +39,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
     private readonly IViewDialogService viewDialogService;
 
     private readonly List<Item> history = [];
+    private readonly Dictionary<Item, Item?> pageSelections = [];
     private int historyIndex = -1;
     private CoreRootItem coreRoot = new((ICollection<CoreBrand>?)null);
 
@@ -138,8 +139,9 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
             return;
         }
 
+        SaveCurrentPageSelection();
         historyIndex--;
-        ShowChildren(history[historyIndex]);
+        ShowChildren(history[historyIndex], RestorePageSelection(history[historyIndex]));
         UpdateNavigationState();
     }
 
@@ -150,8 +152,9 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
             return;
         }
 
+        SaveCurrentPageSelection();
         historyIndex++;
-        ShowChildren(history[historyIndex]);
+        ShowChildren(history[historyIndex], RestorePageSelection(history[historyIndex]));
         UpdateNavigationState();
     }
 
@@ -161,6 +164,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
         switch (item)
         {
             case Brand brand:
+                SaveCurrentPageSelection();
                 PushHistory(brand);
                 ShowChildren(brand);
                 UpdateNavigationState();
@@ -280,6 +284,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
         coreRoot = await gameSettingService.LoadSettingAsync().ConfigureAwait(true);
         var viewRoot = await ItemConversion.ToViewRootAsync(coreRoot, fileService).ConfigureAwait(true);
         history.Clear();
+        pageSelections.Clear();
         history.Add(viewRoot);
         historyIndex = 0;
         ShowChildren(viewRoot);
@@ -412,6 +417,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
         // Preserve the current navigation depth by name so the visible list stays in place.
         var brandName = CurrentItem is Brand brand ? brand.Name : null;
         history.Clear();
+        pageSelections.Clear();
         history.Add(viewRoot);
         historyIndex = 0;
 
@@ -442,7 +448,20 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
         historyIndex = history.Count - 1;
     }
 
-    private void ShowChildren(Item item)
+    private void SaveCurrentPageSelection()
+    {
+        if (currentItem is not null)
+        {
+            pageSelections[currentItem] = SelectedItem;
+        }
+    }
+
+    private Item? RestorePageSelection(Item page) =>
+        pageSelections.TryGetValue(page, out var selection)
+            ? selection
+            : null;
+
+    private void ShowChildren(Item item, Item? selection = null)
     {
         currentItem = item;
         SelectedItem = null;
@@ -458,6 +477,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
             Items.Add(child);
         }
 
+        SelectedItem = selection is not null && Items.Contains(selection) ? selection : null;
         CurrentBrand = item is Brand currentBrandItem ? currentBrandItem.Name : null;
     }
 

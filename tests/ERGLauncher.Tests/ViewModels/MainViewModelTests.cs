@@ -85,6 +85,72 @@ public sealed class MainViewModelTests
     }
 
     [Test]
+    public async Task BackAndForwardRestoreTheSelectionSavedForEachPage()
+    {
+        var firstProduct = new CoreProduct { Name = "First title", BrandName = "First studio", Path = "/games/first" };
+        var secondProduct = new CoreProduct { Name = "Second title", BrandName = "First studio", Path = "/games/second" };
+        var services = CreateServices(new CoreRootItem([
+            new CoreBrand([firstProduct, secondProduct]) { Name = "First studio" },
+        ]));
+        services.Dialogs
+            .ShowConfirmationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(false));
+
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+        var brand = services.ViewModel.Items.OfType<ViewBrand>().Single();
+        services.ViewModel.SelectedItem = brand;
+        await services.ViewModel.SelectItemAsyncCommand.ExecuteAsync(brand);
+        var firstViewProduct = services.ViewModel.Items.OfType<ViewProduct>().First();
+        services.ViewModel.SelectedItem = firstViewProduct;
+
+        services.ViewModel.BackCommand.Execute(null);
+        await Assert.That(services.ViewModel.SelectedItem).IsSameReferenceAs(brand);
+
+        services.ViewModel.ForwardCommand.Execute(null);
+        await Assert.That(services.ViewModel.SelectedItem).IsSameReferenceAs(firstViewProduct);
+    }
+
+    [Test]
+    public async Task SelectingANewBrandAfterGoingBackTruncatesForwardHistory()
+    {
+        var services = CreateServices(new CoreRootItem([
+            new CoreBrand([]) { Name = "First studio" },
+            new CoreBrand([]) { Name = "Second studio" },
+        ]));
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+        var brands = services.ViewModel.Items.OfType<ViewBrand>().ToArray();
+
+        await services.ViewModel.SelectItemAsyncCommand.ExecuteAsync(brands[0]);
+        services.ViewModel.BackCommand.Execute(null);
+        await services.ViewModel.SelectItemAsyncCommand.ExecuteAsync(brands[1]);
+
+        await Assert.That(services.ViewModel.IsEnabledForward).IsFalse();
+        await Assert.That(services.ViewModel.CurrentBrand).IsEqualTo("Second studio");
+    }
+
+    [Test]
+    public async Task RefreshClearsSelectionThatIsNoLongerInTheCurrentItems()
+    {
+        var coreProduct = new CoreProduct { Name = "Title", BrandName = "Studio", Path = "/games/title" };
+        var services = CreateServices(new CoreRootItem([
+            new CoreBrand([coreProduct]) { Name = "Studio" },
+        ]));
+        services.Dialogs
+            .ShowConfirmationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(true));
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+        var brand = services.ViewModel.Items.OfType<ViewBrand>().Single();
+        await services.ViewModel.SelectItemAsyncCommand.ExecuteAsync(brand);
+        var product = services.ViewModel.Items.OfType<ViewProduct>().Single();
+        services.ViewModel.SelectedItem = product;
+
+        await services.ViewModel.RemoveItemAsyncCommand.ExecuteAsync(product);
+
+        await Assert.That(services.ViewModel.SelectedItem).IsNull();
+        await Assert.That(services.ViewModel.Items).IsEmpty();
+    }
+
+    [Test]
     public async Task SelectItemCommandKeepsProductConfirmationAndLaunchBehavior()
     {
         var coreProduct = new CoreProduct { Name = "Title", BrandName = "Studio", Path = "/games/title" };
