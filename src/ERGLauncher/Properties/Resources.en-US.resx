@@ -180,6 +180,9 @@
   <data name="LightTheme" xml:space="preserve">
     <value>Light Theme</value>
   </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Loading...</value>
+  </data>
   <data name="MoreActions" xml:space="preserve">
     <value>More actions</value>
   </data>

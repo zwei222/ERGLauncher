@@ -17,6 +17,8 @@ public interface IMainViewDataContext
 
     string? CurrentBrand { get; }
 
+    bool IsLoading { get; }
+
     Item? SelectedItem { get; set; }
 
     ObservableCollection<Item> Items { get; }

@@ -250,6 +250,15 @@ namespace ERGLauncher.Properties {
         }
 
         /// <summary>
+        ///   Loading... に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Loading {
+            get {
+                return ResourceManager.GetString("Loading", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   More actions に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string MoreActions {

@@ -56,6 +56,9 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
     private string? currentBrand;
 
     [ObservableProperty]
+    private bool isLoading;
+
+    [ObservableProperty]
     private Item? selectedItem;
 
     private Item? currentItem;
@@ -273,22 +276,30 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
 
     private async Task LoadSettingAsync()
     {
-        using var busy = BeginBusy();
-        var appSettings = await appSettingService.LoadAppSettingAsync().ConfigureAwait(true);
-        if (appSettings is not null)
+        IsLoading = true;
+        try
         {
-            resourceService.ChangeCulture(appSettings.Culture);
-            await themeService.ChangeThemeAsync(appSettings.Theme).ConfigureAwait(true);
-        }
+            using var busy = BeginBusy();
+            var appSettings = await appSettingService.LoadAppSettingAsync().ConfigureAwait(true);
+            if (appSettings is not null)
+            {
+                resourceService.ChangeCulture(appSettings.Culture);
+                await themeService.ChangeThemeAsync(appSettings.Theme).ConfigureAwait(true);
+            }
 
-        coreRoot = await gameSettingService.LoadSettingAsync().ConfigureAwait(true);
-        var viewRoot = await ItemConversion.ToViewRootAsync(coreRoot, fileService).ConfigureAwait(true);
-        history.Clear();
-        pageSelections.Clear();
-        history.Add(viewRoot);
-        historyIndex = 0;
-        ShowChildren(viewRoot);
-        UpdateNavigationState();
+            coreRoot = await gameSettingService.LoadSettingAsync().ConfigureAwait(true);
+            var viewRoot = await ItemConversion.ToViewRootAsync(coreRoot, fileService).ConfigureAwait(true);
+            history.Clear();
+            pageSelections.Clear();
+            history.Add(viewRoot);
+            historyIndex = 0;
+            ShowChildren(viewRoot);
+            UpdateNavigationState();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     private async Task SaveAppSettingAsync()
@@ -412,29 +423,37 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
 
     private async Task RefreshCurrentViewAsync()
     {
-        var viewRoot = await ItemConversion.ToViewRootAsync(coreRoot, fileService).ConfigureAwait(true);
-
-        // Preserve the current navigation depth by name so the visible list stays in place.
-        var brandName = CurrentItem is Brand brand ? brand.Name : null;
-        history.Clear();
-        pageSelections.Clear();
-        history.Add(viewRoot);
-        historyIndex = 0;
-
-        Item target = viewRoot;
-        if (brandName is not null)
+        IsLoading = true;
+        try
         {
-            var reloadedBrand = viewRoot.Brands.FirstOrDefault(b => b.Name == brandName);
-            if (reloadedBrand is not null)
-            {
-                history.Add(reloadedBrand);
-                historyIndex = 1;
-                target = reloadedBrand;
-            }
-        }
+            var viewRoot = await ItemConversion.ToViewRootAsync(coreRoot, fileService).ConfigureAwait(true);
 
-        ShowChildren(target);
-        UpdateNavigationState();
+            // Preserve the current navigation depth by name so the visible list stays in place.
+            var brandName = CurrentItem is Brand brand ? brand.Name : null;
+            history.Clear();
+            pageSelections.Clear();
+            history.Add(viewRoot);
+            historyIndex = 0;
+
+            Item target = viewRoot;
+            if (brandName is not null)
+            {
+                var reloadedBrand = viewRoot.Brands.FirstOrDefault(b => b.Name == brandName);
+                if (reloadedBrand is not null)
+                {
+                    history.Add(reloadedBrand);
+                    historyIndex = 1;
+                    target = reloadedBrand;
+                }
+            }
+
+            ShowChildren(target);
+            UpdateNavigationState();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     private void PushHistory(Item item)

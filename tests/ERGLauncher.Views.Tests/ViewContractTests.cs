@@ -90,9 +90,8 @@ public class ViewContractTests
     {
         var document = XDocument.Load(Path.Combine(ViewsDirectory, "MainView.axaml"));
         XNamespace avalonia = "https://github.com/avaloniaui";
-        var contentHeader = document.Descendants(avalonia + "Grid")
-            .Single(grid => grid.Attribute("Grid.Row")?.Value == "1");
-        var headerTextBlocks = contentHeader.Descendants(avalonia + "TextBlock").ToArray();
+        var topBar = document.Root!.Element(avalonia + "Grid")!.Elements(avalonia + "Border").Single();
+        var headerTextBlocks = topBar.Descendants(avalonia + "TextBlock").ToArray();
 
         await Assert.That(document.Root!.Attribute("Title")?.Value).IsEqualTo("ERG Launcher");
         await Assert.That(headerTextBlocks.Count(textBlock =>
@@ -107,6 +106,39 @@ public class ViewContractTests
         await Assert.That(document.Descendants(avalonia + "TextBlock")
                 .Count(textBlock => textBlock.Attribute("Text")?.Value == "{Binding Title}"))
             .IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task MainView_PlacesTitleAndActionsInTheTopBarAndKeepsListAsMainContent()
+    {
+        var document = XDocument.Load(Path.Combine(ViewsDirectory, "MainView.axaml"));
+        XNamespace avalonia = "https://github.com/avaloniaui";
+        var rootGrid = document.Root!.Element(avalonia + "Grid")!;
+        var topBar = rootGrid.Elements(avalonia + "Border").Single();
+
+        await Assert.That(rootGrid.Attribute("RowDefinitions")?.Value).IsEqualTo("Auto,*");
+        await Assert.That(topBar.Descendants(avalonia + "TextBlock")
+                .Count(textBlock => textBlock.Attribute("Text")?.Value == "{Binding Title}"))
+            .IsEqualTo(1);
+        await Assert.That(topBar.Descendants(avalonia + "Button")
+                .Any(button => button.Attribute("Command")?.Value == "{Binding OpenSettingCommand}"))
+            .IsTrue();
+        await Assert.That(rootGrid.Elements(avalonia + "Grid")
+                .Any(grid => grid.Attribute("Grid.Row")?.Value == "1"))
+            .IsTrue();
+    }
+
+    [Test]
+    public async Task MainView_ShowsLoadingIndicatorFromLoadingStateAndAddsThroughListContextMenu()
+    {
+        var source = await File.ReadAllTextAsync(Path.Combine(ViewsDirectory, "MainView.axaml"));
+
+        await Assert.That(source).Contains("IsVisible=\"{Binding IsLoading}\"");
+        await Assert.That(source).Contains("<ProgressBar");
+        await Assert.That(source).Contains("<ListBox.ContextMenu>");
+        await Assert.That(source).Contains("Header=\"{x:Static properties:Resources.Add}\"");
+        await Assert.That(source).Contains("Command=\"{Binding AddItemAsyncCommand}\"");
+        await Assert.That(source).DoesNotContain("Grid.Column=\"1\"\n              Classes=\"toolbar\"\n              Command=\"{Binding AddItemAsyncCommand}\"");
     }
 
     [Test]

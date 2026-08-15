@@ -197,6 +197,35 @@ public sealed class MainViewModelTests
             .CreateBitmapAsync(null, Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task LoadingStateIsTrueOnlyWhileInitialListDataIsBeingLoaded()
+    {
+        var services = CreateServices(new CoreRootItem([new CoreBrand([]) { Name = "Studio" }]));
+        var loadStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseLoad = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        services.GameSettings.LoadSettingAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask<CoreRootItem>(WaitForLoadAsync()));
+
+        async Task<CoreRootItem> WaitForLoadAsync()
+        {
+            loadStarted.SetResult(true);
+            await releaseLoad.Task;
+            return new CoreRootItem([new CoreBrand([]) { Name = "Studio" }]);
+        }
+
+        var loadTask = services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+        await loadStarted.Task;
+
+        await Assert.That(services.ViewModel.IsLoading).IsTrue();
+        await Assert.That(services.ViewModel.Items).IsEmpty();
+
+        releaseLoad.SetResult(true);
+        await loadTask;
+
+        await Assert.That(services.ViewModel.IsLoading).IsFalse();
+        await Assert.That(services.ViewModel.Items).Count().IsEqualTo(1);
+    }
+
     private static TestServices CreateServices(CoreRootItem root)
     {
         var fileService = Substitute.For<IFileService>();
@@ -225,11 +254,12 @@ public sealed class MainViewModelTests
             themes,
             dialogs,
             viewDialogs);
-        return new TestServices(viewModel, fileService, dialogs);
+        return new TestServices(viewModel, fileService, dialogs, gameSettings);
     }
 
     private sealed record TestServices(
         MainViewModel ViewModel,
         IFileService FileService,
-        IDialogService Dialogs);
+        IDialogService Dialogs,
+        IGameSettingService GameSettings);
 }

@@ -509,17 +509,17 @@ public class MainViewInputContractTests
             PrepareView(view);
             var listBox = view.FindControl<ListBox>("MainListBox")!;
             var itemContainer = GetRealizedItem(listBox, item);
-            var add = view.GetVisualDescendants().OfType<Button>().First(button =>
-                button.Command == dataContext.AddItemAsyncCommand);
+            var settings = view.GetVisualDescendants().OfType<Button>().First(button =>
+                button.Command == dataContext.OpenSettingCommand);
             var modified = MainViewKeyboardActivation.TryGetActivationItem(
                 Key.Enter, KeyModifiers.Control, itemContainer, itemContainer, listBox, out _);
             var toolbar = MainViewKeyboardActivation.TryGetActivationItem(
-                Key.Space, KeyModifiers.None, add, add, listBox, out _);
+                Key.Space, KeyModifiers.None, settings, settings, listBox, out _);
             listBox.SelectedItem = new Brand([]) { Name = "Stale" };
             var staleSelection = MainViewKeyboardActivation.TryGetActivationItem(
                 Key.Enter, KeyModifiers.None, listBox, listBox, listBox, out _);
             var unrelatedSource = MainViewKeyboardActivation.TryGetActivationItem(
-                Key.Enter, KeyModifiers.None, add, add, listBox, out _);
+                Key.Enter, KeyModifiers.None, settings, settings, listBox, out _);
             view.Close();
             return (modified, toolbar, staleSelection, unrelatedSource);
         });
@@ -592,6 +592,34 @@ public class MainViewInputContractTests
         await Assert.That(result.IsOpen).IsFalse();
     }
 
+    [Test]
+    public async Task ListContextMenuResolvesAndExecutesAddCommandFromCurrentDataContext()
+    {
+        var result = await AvaloniaTestSession.RunAsync(() =>
+        {
+            var dataContext = new CountingMainViewDataContext(new Brand([]) { Name = "Only" });
+            var view = new MainView { DataContext = dataContext };
+            PrepareView(view);
+
+            var listBox = view.FindControl<ListBox>("MainListBox")!;
+            var contextMenu = listBox.ContextMenu!;
+            contextMenu.Open(listBox);
+            Dispatcher.UIThread.RunJobs();
+
+            var add = contextMenu.Items.OfType<MenuItem>().Single();
+            var commandResolved = ReferenceEquals(add.Command, dataContext.AddItemAsyncCommand);
+            add.Command!.Execute(add.CommandParameter);
+            var result = (commandResolved, dataContext.AddCount, contextMenu.IsOpen);
+            contextMenu.Close();
+            view.Close();
+            return result;
+        });
+
+        await Assert.That(result.commandResolved).IsTrue();
+        await Assert.That(result.AddCount).IsEqualTo(1);
+        await Assert.That(result.IsOpen).IsTrue();
+    }
+
 
     private static void PrepareView(MainView view)
     {
@@ -637,12 +665,14 @@ public class MainViewInputContractTests
             });
             EditItemAsyncCommand = new CountingCommand(item => LastEditedItem = item as Item);
             RemoveItemAsyncCommand = new CountingCommand(item => LastRemovedItem = item as Item);
+            AddItemAsyncCommand = new CountingCommand(_ => AddCount++);
         }
 
         public string? Title => "Test";
         public bool IsEnabledBack => false;
         public bool IsEnabledForward => false;
         public string? CurrentBrand => null;
+        public bool IsLoading => false;
         private Item? selectedItem;
         public Item? SelectedItem
         {
@@ -688,7 +718,7 @@ public class MainViewInputContractTests
         public ICommand BackCommand { get; } = new CountingCommand();
         public ICommand ForwardCommand { get; } = new CountingCommand();
         public ICommand SelectItemAsyncCommand { get; }
-        public ICommand AddItemAsyncCommand { get; } = new CountingCommand();
+        public ICommand AddItemAsyncCommand { get; }
         public ICommand EditItemAsyncCommand { get; }
         public ICommand RemoveItemAsyncCommand { get; }
         public ICommand OpenSettingCommand { get; } = new CountingCommand();
@@ -698,6 +728,7 @@ public class MainViewInputContractTests
         public Item? LastSelectedItem { get; private set; }
         public Item? LastEditedItem { get; private set; }
         public Item? LastRemovedItem { get; private set; }
+        public int AddCount { get; private set; }
 
     }
 
