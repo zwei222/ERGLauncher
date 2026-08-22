@@ -14,6 +14,8 @@ public interface IFileService
 
     ValueTask<string?> CopyIconFileAsync(string? filePath, CancellationToken cancellationToken = default);
 
+    ValueTask<string?> ExtractAssociatedIconAsync(string filePath, CancellationToken cancellationToken = default);
+
     ValueTask<string> SaveIconAsync(ReadOnlyMemory<byte> content, string extension = ".png", CancellationToken cancellationToken = default);
 
     ValueTask ExecuteAsync(string filePath, CancellationToken cancellationToken = default);

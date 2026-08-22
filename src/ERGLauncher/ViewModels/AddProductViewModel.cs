@@ -1,3 +1,5 @@
+extern alias MigratedCore;
+
 using System;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
@@ -6,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using ERGLauncher.Core;
 using ERGLauncher.Properties;
 using ERGLauncher.Services;
+using IFileService = MigratedCore::ERGLauncher.Core.Services.IFileService;
 
 namespace ERGLauncher.ViewModels;
 
@@ -16,6 +19,7 @@ namespace ERGLauncher.ViewModels;
 public sealed partial class AddProductViewModel : DialogViewModelBase
 {
     private readonly IFilePickerService filePickerService;
+    private readonly IFileService fileService;
 
     [ObservableProperty]
     private string name = string.Empty;
@@ -29,9 +33,10 @@ public sealed partial class AddProductViewModel : DialogViewModelBase
     [ObservableProperty]
     private string path = string.Empty;
 
-    public AddProductViewModel(IFilePickerService filePickerService)
+    public AddProductViewModel(IFilePickerService filePickerService, IFileService fileService)
     {
         this.filePickerService = filePickerService ?? throw new ArgumentNullException(nameof(filePickerService));
+        this.fileService = fileService ?? throw new ArgumentNullException(nameof(fileService));
         SelectIconAsyncCommand = new AsyncRelayCommand(SelectIconAsync, () => !IsBusy);
         SelectFileAsyncCommand = new AsyncRelayCommand(SelectFileAsync, () => !IsBusy);
         AddProductAsyncCommand = new AsyncRelayCommand(AddProductAsync, CanAddProduct);
@@ -93,6 +98,14 @@ public sealed partial class AddProductViewModel : DialogViewModelBase
         if (!string.IsNullOrWhiteSpace(picked))
         {
             Path = picked;
+            if (string.IsNullOrWhiteSpace(IconPath))
+            {
+                IconPath = await fileService.ExtractAssociatedIconAsync(picked).ConfigureAwait(true);
+                if (!string.IsNullOrWhiteSpace(IconPath))
+                {
+                    Icon = await fileService.CreateBitmapAsync(IconPath).ConfigureAwait(true);
+                }
+            }
         }
     }
 

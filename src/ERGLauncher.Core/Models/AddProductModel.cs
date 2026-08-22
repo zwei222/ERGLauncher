@@ -1,6 +1,5 @@
 using ERGLauncher.Core.Services;
 using Avalonia.Media.Imaging;
-using System.Drawing.Imaging;
 
 namespace ERGLauncher.Core.Models;
 
@@ -34,21 +33,17 @@ public sealed class AddProductModel : ModelBase, IAddProductModel
     public async ValueTask SelectFileAsync(string filePath, CancellationToken cancellationToken = default)
     {
         this.Path = filePath;
-        if (!OperatingSystem.IsWindowsVersionAtLeast(6, 1) || !string.IsNullOrWhiteSpace(this.IconPath))
+        if (!string.IsNullOrWhiteSpace(this.IconPath))
         {
             return;
         }
 
-        using var associatedIcon = System.Drawing.Icon.ExtractAssociatedIcon(filePath);
-        if (associatedIcon is null)
+        this.IconPath = await this.fileService.ExtractAssociatedIconAsync(filePath, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(this.IconPath))
         {
             return;
         }
 
-        using var extractedBitmap = associatedIcon.ToBitmap();
-        using var stream = new MemoryStream();
-        extractedBitmap.Save(stream, ImageFormat.Png);
-        this.IconPath = await this.fileService.SaveIconAsync(stream.ToArray(), cancellationToken: cancellationToken).ConfigureAwait(false);
         this.Icon = await this.fileService.CreateBitmapAsync(this.IconPath, cancellationToken).ConfigureAwait(false);
     }
 

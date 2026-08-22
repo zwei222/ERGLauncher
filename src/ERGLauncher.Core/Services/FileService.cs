@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace ERGLauncher.Core.Services;
 
@@ -82,6 +84,28 @@ public sealed class FileService : IFileService
         await using var destination = File.Create(destinationPath);
         await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
         return destinationPath;
+    }
+
+    public async ValueTask<string?> ExtractAssociatedIconAsync(
+        string filePath,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+        {
+            return null;
+        }
+
+        using var associatedIcon = Icon.ExtractAssociatedIcon(filePath);
+        if (associatedIcon is null)
+        {
+            return null;
+        }
+
+        using var extractedBitmap = associatedIcon.ToBitmap();
+        using var stream = new MemoryStream();
+        extractedBitmap.Save(stream, ImageFormat.Png);
+        return await this.SaveIconAsync(stream.ToArray(), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask<string> SaveIconAsync(ReadOnlyMemory<byte> content, string extension = ".png", CancellationToken cancellationToken = default)
