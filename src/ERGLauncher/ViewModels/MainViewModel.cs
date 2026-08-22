@@ -3,6 +3,7 @@ extern alias MigratedCore;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -41,6 +42,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
     private readonly List<Item> history = [];
     private readonly Dictionary<Item, Item?> pageSelections = [];
     private int historyIndex = -1;
+    private int loadingCount;
     private CoreRootItem coreRoot = new((ICollection<CoreBrand>?)null);
 
     [ObservableProperty]
@@ -205,6 +207,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
             return;
         }
 
+        using var loading = BeginLoading();
         switch (result.Value)
         {
             case Brand brand:
@@ -237,6 +240,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
             return;
         }
 
+        using var loading = BeginLoading();
         switch (result.Value)
         {
             case Brand brand:
@@ -276,30 +280,23 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
 
     private async Task LoadSettingAsync()
     {
-        IsLoading = true;
-        try
+        using var loading = BeginLoading();
+        using var busy = BeginBusy();
+        var appSettings = await appSettingService.LoadAppSettingAsync().ConfigureAwait(true);
+        if (appSettings is not null)
         {
-            using var busy = BeginBusy();
-            var appSettings = await appSettingService.LoadAppSettingAsync().ConfigureAwait(true);
-            if (appSettings is not null)
-            {
-                resourceService.ChangeCulture(appSettings.Culture);
-                await themeService.ChangeThemeAsync(appSettings.Theme).ConfigureAwait(true);
-            }
+            resourceService.ChangeCulture(appSettings.Culture);
+            await themeService.ChangeThemeAsync(appSettings.Theme).ConfigureAwait(true);
+        }
 
-            coreRoot = await gameSettingService.LoadSettingAsync().ConfigureAwait(true);
-            var viewRoot = await ItemConversion.ToViewRootAsync(coreRoot, fileService).ConfigureAwait(true);
-            history.Clear();
-            pageSelections.Clear();
-            history.Add(viewRoot);
-            historyIndex = 0;
-            ShowChildren(viewRoot);
-            UpdateNavigationState();
-        }
-        finally
-        {
-            IsLoading = false;
-        }
+        coreRoot = await gameSettingService.LoadSettingAsync().ConfigureAwait(true);
+        var viewRoot = await ItemConversion.ToViewRootAsync(coreRoot, fileService).ConfigureAwait(true);
+        history.Clear();
+        pageSelections.Clear();
+        history.Add(viewRoot);
+        historyIndex = 0;
+        ShowChildren(viewRoot);
+        UpdateNavigationState();
     }
 
     private async Task SaveAppSettingAsync()
@@ -423,37 +420,30 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
 
     private async Task RefreshCurrentViewAsync()
     {
-        IsLoading = true;
-        try
+        using var loading = BeginLoading();
+        var viewRoot = await ItemConversion.ToViewRootAsync(coreRoot, fileService).ConfigureAwait(true);
+
+        // Preserve the current navigation depth by name so the visible list stays in place.
+        var brandName = CurrentItem is Brand brand ? brand.Name : null;
+        history.Clear();
+        pageSelections.Clear();
+        history.Add(viewRoot);
+        historyIndex = 0;
+
+        Item target = viewRoot;
+        if (brandName is not null)
         {
-            var viewRoot = await ItemConversion.ToViewRootAsync(coreRoot, fileService).ConfigureAwait(true);
-
-            // Preserve the current navigation depth by name so the visible list stays in place.
-            var brandName = CurrentItem is Brand brand ? brand.Name : null;
-            history.Clear();
-            pageSelections.Clear();
-            history.Add(viewRoot);
-            historyIndex = 0;
-
-            Item target = viewRoot;
-            if (brandName is not null)
+            var reloadedBrand = viewRoot.Brands.FirstOrDefault(b => b.Name == brandName);
+            if (reloadedBrand is not null)
             {
-                var reloadedBrand = viewRoot.Brands.FirstOrDefault(b => b.Name == brandName);
-                if (reloadedBrand is not null)
-                {
-                    history.Add(reloadedBrand);
-                    historyIndex = 1;
-                    target = reloadedBrand;
-                }
+                history.Add(reloadedBrand);
+                historyIndex = 1;
+                target = reloadedBrand;
             }
+        }
 
-            ShowChildren(target);
-            UpdateNavigationState();
-        }
-        finally
-        {
-            IsLoading = false;
-        }
+        ShowChildren(target);
+        UpdateNavigationState();
     }
 
     private void PushHistory(Item item)
@@ -491,7 +481,8 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
             Brand brand => brand.Products,
             _ => [],
         };
-        foreach (var child in children)
+        var comparer = StringComparer.Create(resourceService.CurrentCulture, ignoreCase: true);
+        foreach (var child in children.OrderBy(child => child.Name, comparer))
         {
             Items.Add(child);
         }
@@ -509,6 +500,24 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
 
     private ValueTask ShowAlreadyExistsAsync(string name) =>
         dialogService.ShowMessageAsync(name, FormatMessage("AlreadyExists", name));
+
+    private IDisposable BeginLoading()
+    {
+        if (Interlocked.Increment(ref loadingCount) == 1)
+        {
+            IsLoading = true;
+        }
+
+        return new LoadingScope(this);
+    }
+
+    private void EndLoading()
+    {
+        if (Interlocked.Decrement(ref loadingCount) == 0)
+        {
+            IsLoading = false;
+        }
+    }
 
     private string FormatMessage(string key, string itemName)
     {
@@ -529,5 +538,12 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
         OpenSettingCommand.NotifyCanExecuteChanged();
         LoadSettingAsyncCommand.NotifyCanExecuteChanged();
         SaveAppSettingAsyncCommand.NotifyCanExecuteChanged();
+    }
+
+    private sealed class LoadingScope(MainViewModel owner) : IDisposable
+    {
+        private MainViewModel? owner = owner;
+
+        public void Dispose() => Interlocked.Exchange(ref owner, null)?.EndLoading();
     }
 }

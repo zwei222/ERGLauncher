@@ -38,6 +38,31 @@ public sealed class MainViewModelTests
     }
 
     [Test]
+    public async Task InitialAndNestedListsAreSortedByNameIgnoringCase()
+    {
+        var brand = new CoreBrand([
+            new CoreProduct { Name = "zulu", BrandName = "Alpha", Path = "/games/zulu" },
+            new CoreProduct { Name = "Bravo", BrandName = "Alpha", Path = "/games/bravo" },
+            new CoreProduct { Name = "alpha", BrandName = "Alpha", Path = "/games/alpha" },
+        ]) { Name = "Alpha" };
+        var services = CreateServices(new CoreRootItem([
+            new CoreBrand([]) { Name = "zulu" },
+            brand,
+            new CoreBrand([]) { Name = "bravo" },
+        ]));
+
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+
+        await Assert.That(string.Join("|", services.ViewModel.Items.Select(item => item.Name)))
+            .IsEqualTo("Alpha|bravo|zulu");
+        var alphaBrand = services.ViewModel.Items.OfType<ViewBrand>().Single(item => item.Name == "Alpha");
+        await services.ViewModel.SelectItemAsyncCommand.ExecuteAsync(alphaBrand);
+
+        await Assert.That(string.Join("|", services.ViewModel.Items.Select(item => item.Name)))
+            .IsEqualTo("alpha|Bravo|zulu");
+    }
+
+    [Test]
     public async Task RemoveItemCommandUsesTheSuppliedItemInsteadOfSelection()
     {
         var firstBrand = new CoreBrand([]) { Name = "First studio" };
@@ -226,6 +251,71 @@ public sealed class MainViewModelTests
         await Assert.That(services.ViewModel.Items).Count().IsEqualTo(1);
     }
 
+    [Test]
+    public async Task LoadingRemainsVisibleDuringDelayedAcceptedAddPersistenceAndRefresh()
+    {
+        var services = CreateServices(new CoreRootItem([]));
+        var saveStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseSave = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        services.ViewDialogs.ShowDialogAsync("AddBrand", Arg.Any<object?>())
+            .Returns(Task.FromResult(new DialogResult(true, new ViewBrand([]) { Name = "New brand" })));
+        services.GameSettings.CreateBrandItemAsync("New brand", null, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(new CoreBrand([]) { Name = "New brand" }));
+        services.GameSettings.SaveSettingAsync(Arg.Any<CoreRootItem?>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask(SaveAsync()));
+
+        async Task SaveAsync()
+        {
+            saveStarted.SetResult(true);
+            await releaseSave.Task;
+        }
+
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+        var addTask = services.ViewModel.AddItemAsyncCommand.ExecuteAsync(null);
+        await saveStarted.Task;
+
+        await Assert.That(services.ViewModel.IsLoading).IsTrue();
+
+        releaseSave.SetResult(true);
+        await addTask;
+
+        await Assert.That(services.ViewModel.IsLoading).IsFalse();
+        await Assert.That(services.ViewModel.Items.Single().Name).IsEqualTo("New brand");
+    }
+
+    [Test]
+    public async Task LoadingRemainsVisibleDuringDelayedAcceptedEditPersistence()
+    {
+        var services = CreateServices(new CoreRootItem([
+            new CoreBrand([]) { Name = "Original" },
+        ]));
+        var saveStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseSave = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        services.ViewDialogs.ShowDialogAsync("AddBrand", Arg.Any<object?>())
+            .Returns(Task.FromResult(new DialogResult(true, new ViewBrand([]) { Name = "Updated" })));
+        services.GameSettings.SaveSettingAsync(Arg.Any<CoreRootItem?>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask(SaveAsync()));
+
+        async Task SaveAsync()
+        {
+            saveStarted.SetResult(true);
+            await releaseSave.Task;
+        }
+
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+        var original = services.ViewModel.Items.OfType<ViewBrand>().Single();
+        var editTask = services.ViewModel.EditItemAsyncCommand.ExecuteAsync(original);
+        await saveStarted.Task;
+
+        await Assert.That(services.ViewModel.IsLoading).IsTrue();
+
+        releaseSave.SetResult(true);
+        await editTask;
+
+        await Assert.That(services.ViewModel.IsLoading).IsFalse();
+        await Assert.That(services.ViewModel.Items.Single().Name).IsEqualTo("Updated");
+    }
+
     private static TestServices CreateServices(CoreRootItem root)
     {
         var fileService = Substitute.For<IFileService>();
@@ -254,12 +344,13 @@ public sealed class MainViewModelTests
             themes,
             dialogs,
             viewDialogs);
-        return new TestServices(viewModel, fileService, dialogs, gameSettings);
+        return new TestServices(viewModel, fileService, dialogs, gameSettings, viewDialogs);
     }
 
     private sealed record TestServices(
         MainViewModel ViewModel,
         IFileService FileService,
         IDialogService Dialogs,
-        IGameSettingService GameSettings);
+        IGameSettingService GameSettings,
+        IViewDialogService ViewDialogs);
 }
