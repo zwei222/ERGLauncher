@@ -1,5 +1,7 @@
 # Avalonia migration integration handoff
 
+[English](avalonia-migration-handoff.md) | [日本語](avalonia-migration-handoff.ja.md)
+
 The integrated verification worktree is `/home/hermes/repos/workspace/agent` on branch `feat/AvaloniaMigration`.
 
 Run from the repository root:

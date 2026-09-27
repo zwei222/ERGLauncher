@@ -1,36 +1,37 @@
-# T-3004 Native AoT 差戻し修正・再検証
+# T-3004 Native AoT Rework and Re-verification
 
-- 判定: **Linux 要件は合格 / Windows x64 検証は Linux build 環境のため対象外**
-- 対象ブランチ: `feat/AvaloniaMigration`
-- ベース commit: `a131cdc3c9e94097ccf1dcf39b6487f68870779e`
-- 変更 commit: Kanban 完了記録に記載
-- 実行日時: 2026-07-24
-- 実行環境: Linux 7.0.9+parrot7-amd64, x64, .NET SDK 10.0.302
+[English](T-3004-verification-report.md) | [日本語](T-3004-verification-report.ja.md)
 
-> **証跡の保持状態:** この文書は当時の検証結果を記録した履歴レポートです。下表のログ名は当時の実行時に参照した名称ですが、ログ本体は現在のリポジトリには保持されていません。そのため、チェックアウトだけから当時のPASSを独立検証することはできません。現在の状態を判定する場合は、後述の再検証手順を新規実行し、生成されたログと終了コードを同じ実行単位で保存してください。
+- Verdict: **Linux requirements passed / Windows x64 verification not applicable due to Linux build environment**
+- Target branch: `feat/AvaloniaMigration`
+- Base commit: `a131cdc3c9e94097ccf1dcf39b6487f68870779e`
+- Change commit: Recorded in Kanban completion record
+- Execution date: 2026-07-24
+- Execution environment: Linux 7.0.9+parrot7-amd64, x64, .NET SDK 10.0.302
 
-## 修正内容
+> **Evidence Retention Status:** This document is a historical report recording verification results from that time. The log names in the table below are the names referenced at the time of execution, but the logs themselves are not retained in the current repository. Therefore, the historical PASS cannot be independently verified from a checkout alone. When evaluating the current state, run the re-verification procedure described below anew, and preserve the generated logs and exit codes within the same execution unit.
 
-1. `MainView.axaml` に `x:CompileBindings="True"` と `x:DataType="views:IMainViewDataContext"` を設定し、項目テンプレートにも `core:Item` の型を付与した。これにより到達可能な全 MainView binding が ReflectionBinding から compiled binding になった。
-2. `IMainViewDataContext` を追加し、MainView の binding surface を型付きで定義した。
-3. publish 済み実行ファイルから呼び出せる `--settings-smoke <base-directory>` を追加した。旧形式 JSON の読込、ブランド/製品の Create・Read・Update・Delete、app/game settings 保存、サービス再生成後の永続化、別プロセス再起動後の読込を検証する。
-4. compiled binding 契約テストと settings smoke 統合テストを追加した。
+## Changes Made
 
-## 検証結果
+1. Configured `x:CompileBindings="True"` and `x:DataType="views:IMainViewDataContext"` on `MainView.axaml`, and applied the `core:Item` type to the item template. As a result, all reachable MainView bindings were converted from ReflectionBinding to compiled bindings.
+2. Added `IMainViewDataContext`, defining the MainView binding surface with strong typing.
+3. Added `--settings-smoke <base-directory>`, invokable from published executables. This verifies loading legacy-format JSON, Create/Read/Update/Delete operations for brands/products, saving app/game settings, persistence after service recreation, and loading after restarting in a separate process.
+4. Added compiled binding contract tests and settings smoke integration tests.
 
-| ID | コマンド / 手順 | 当時の結果 | 当時のログ名（現在は非保持） |
+## Verification Results
+
+| ID | Command / Procedure | Historical Result | Historical Log Name (Currently Not Retained) |
 |---|---|---|---|
-| B-01 | `dotnet build ERGLauncher.sln -c Release --no-restore --warnaserror --verbosity minimal` | PASS。警告 0、エラー 0、exit 0 | `build-warnaserror.log` |
-| T-01 | `dotnet test ERGLauncher.sln -c Release --no-restore --verbosity minimal` | PASS。62 passed / 0 failed / 0 skipped、exit 0 | `test-integration.log` |
-| A-02 | `dotnet publish src/ERGLauncher/ERGLauncher.csproj -c Release -r linux-x64 --self-contained` | PASS。exit 0、IL2xxx/IL3xxx 0件 | `publish-linux-x64.log` |
-| S-01 | publish ELF を旧 fixture に対し `--settings-smoke` で起動 | PASS。旧 app/game settings 読込、CRUD、保存、サービス再生成後の永続化、exit 0 | `smoke-linux-x64.log` |
-| S-02 | 同じ publish ELF を同じ保存先に対して別プロセスで再起動 | PASS。保存済み culture/theme/brand/product を再読込、exit 0 | `smoke-linux-x64.log` |
-| A-01 | Linux host で win-x64 Native AoT publish 可否を確認 | SDK が `Cross-OS native compilation is not supported.`、exit 1。Windows build 環境時のみの条件なので判定対象外 | `publish-win-x64.log` |
+| B-01 | `dotnet build ERGLauncher.sln -c Release --no-restore --warnaserror --verbosity minimal` | PASS. 0 warnings, 0 errors, exit 0 | `build-warnaserror.log` |
+| T-01 | `dotnet test ERGLauncher.sln -c Release --no-restore --verbosity minimal` | PASS. 62 passed / 0 failed / 0 skipped, exit 0 | `test-integration.log` |
+| A-02 | `dotnet publish src/ERGLauncher/ERGLauncher.csproj -c Release -r linux-x64 --self-contained` | PASS. exit 0, 0 IL2xxx/IL3xxx occurrences | `publish-linux-x64.log` |
+| S-01 | Launch published ELF against legacy fixture with `--settings-smoke` | PASS. Loaded legacy app/game settings, CRUD, save, persistence after service recreation, exit 0 | `smoke-linux-x64.log` |
+| S-02 | Relaunch the same published ELF against the same destination in a separate process | PASS. Reloaded saved culture/theme/brand/product, exit 0 | `smoke-linux-x64.log` |
+| A-01 | Check viability of win-x64 Native AoT publish on Linux host | SDK reported `Cross-OS native compilation is not supported.`, exit 1. Excluded from evaluation as this condition applies only to a Windows build environment | `publish-win-x64.log` |
 
+## Re-verification Procedure
 
-## 再検証手順
-
-`--no-restore` は、同じ検証実行内で明示的なrestoreが成功した後にのみ使用する。現在のチェックアウトを検証する場合は、最低限次の順序で実行する。
+`--no-restore` should only be used after an explicit restore has succeeded within the same verification run. To verify the current checkout, execute in at least the following order:
 
 ```sh
 ./tools/verify-tests.sh
@@ -50,24 +51,24 @@ dotnet publish src/ERGLauncher/ERGLauncher.csproj \
 "$RUN_ROOT/publish/ERGLauncher" --settings-smoke "$RUN_ROOT"
 ```
 
-判定時は、上記の完全な標準出力・標準エラー・終了コード、`$RUN_ROOT/publish`、および実行したバイナリのパスを同じ`$RUN_ROOT`配下へ保存する。`qa-artifacts/verification/` はGit管理外であるため、保持が必要な場合はCI artifactなど別の永続保管先へアップロードする。
+During evaluation, save the complete stdout, stderr, exit code, `$RUN_ROOT/publish`, and the path of the executed binary under the same `$RUN_ROOT`. Because `qa-artifacts/verification/` is not tracked by Git, upload to a separate persistent location, such as CI artifacts, if retention is required.
 
-## Linux publish smoke の具体的な確認値
+## Specific Checked Values for Linux Publish Smoke
 
-- 成果物: ELF 64-bit x86-64 Native AoT executable
-- 初回: `culture=ja-JP theme=Dark brands=1` を旧 JSON から読込
-- CRUD: brand/product create、product rename update、削除対象 product delete
-- 保存後: `appSettings.json` は `Culture.Name=en-US`, `Theme=1`
-- 同一プロセス内サービス再生成: `RESTART_PERSISTENCE=PASS`
-- 別プロセス再起動: `CRUD_READ_AFTER_RESTART=PASS`
-- 最終 SHA-256:
+- Artifact: ELF 64-bit x86-64 Native AoT executable
+- Initial load: Loaded `culture=ja-JP theme=Dark brands=1` from legacy JSON
+- CRUD: brand/product create, product rename update, target product delete
+- After saving: `appSettings.json` has `Culture.Name=en-US`, `Theme=1`
+- In-process service recreation: `RESTART_PERSISTENCE=PASS`
+- Separate process restart: `CRUD_READ_AFTER_RESTART=PASS`
+- Final SHA-256:
   - appSettings.json: `8b5a626e0016ce13f4ab0737e6da1398e1b5d6d60c394bfbf95bd7c45c1520a9`
   - gameSettings.json: `7976ebc542ada19b246e3f4604a8ac87a6c572c7f0543ad277539232a16ccb00`
 
-## Windows 条件の扱い
+## Handling of Windows Conditions
 
-受入条件 2 は build 環境が Windows の場合のみ適用される。実行環境は Linux x64 であり、Linux からの win-x64 Native AoT cross compilation は .NET SDK 非対応のため、Windows publish と `.exe` smoke は実行していない。未実行結果を成功扱いにはせず、条件対象外として記録する。
+Acceptance Criterion 2 applies only when the build environment is Windows. The execution environment was Linux x64, and because win-x64 Native AoT cross-compilation from Linux is unsupported by the .NET SDK, Windows publish and `.exe` smoke were not executed. The unexecuted results are not treated as success, but recorded as not applicable to the conditions.
 
-## 残存リスク
+## Residual Risks
 
-Windows x64 上での Native AoT publish と publish 済み `.exe` の settings smoke は未実測である。Windows build 環境で本変更を検証する際は、`publish-win-x64.log` と `.exe --settings-smoke` の完全ログを取得すること。
+Native AoT publish on Windows x64 and settings smoke for the published `.exe` have not been tested. When verifying these changes in a Windows build environment, obtain the complete logs for `publish-win-x64.log` and `.exe --settings-smoke`.

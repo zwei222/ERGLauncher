@@ -1,5 +1,7 @@
 # ERGLauncher
 
+[English](README.md) | [日本語](README.ja.md)
+
 ERG Launcher is a launcher application that manages games by brand.
 
 ![erglauncher_capture](./docs/erglauncher_capture.png)
