@@ -90,7 +90,7 @@ public class ViewContractTests
     {
         var document = XDocument.Load(Path.Combine(ViewsDirectory, "MainView.axaml"));
         XNamespace avalonia = "https://github.com/avaloniaui";
-        var topBar = document.Root!.Element(avalonia + "Grid")!.Elements(avalonia + "Border").Single();
+        var topBar = document.Root!.Element(avalonia + "Grid")!.Elements(avalonia + "Border").First();
         var headerTextBlocks = topBar.Descendants(avalonia + "TextBlock").ToArray();
 
         await Assert.That(document.Root!.Attribute("Title")?.Value).IsEqualTo("ERG Launcher");
@@ -114,7 +114,7 @@ public class ViewContractTests
         var document = XDocument.Load(Path.Combine(ViewsDirectory, "MainView.axaml"));
         XNamespace avalonia = "https://github.com/avaloniaui";
         var rootGrid = document.Root!.Element(avalonia + "Grid")!;
-        var topBar = rootGrid.Elements(avalonia + "Border").Single();
+        var topBar = rootGrid.Elements(avalonia + "Border").First();
 
         await Assert.That(rootGrid.Attribute("RowDefinitions")?.Value).IsEqualTo("Auto,*");
         await Assert.That(topBar.Descendants(avalonia + "TextBlock")
@@ -131,6 +131,14 @@ public class ViewContractTests
     [Test]
     public async Task MainView_ShowsLoadingIndicatorFromLoadingStateAndAddsThroughListContextMenu()
     {
+        var document = XDocument.Load(Path.Combine(ViewsDirectory, "MainView.axaml"));
+        XNamespace avalonia = "https://github.com/avaloniaui";
+        var overlays = document.Descendants(avalonia + "Border")
+            .Where(border => border.Attribute("IsVisible")?.Value == "{Binding IsLoading}")
+            .ToArray();
+        await Assert.That(overlays).HasSingleItem();
+        await Assert.That(overlays[0].Attribute("Grid.RowSpan")?.Value).IsEqualTo("2");
+        await Assert.That(overlays[0].Attribute("ZIndex")?.Value).IsEqualTo("10");
         var source = await File.ReadAllTextAsync(Path.Combine(ViewsDirectory, "MainView.axaml"));
 
         await Assert.That(source).Contains("IsVisible=\"{Binding IsLoading}\"");

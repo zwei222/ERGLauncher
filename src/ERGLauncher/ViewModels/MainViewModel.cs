@@ -267,6 +267,7 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
             return;
         }
 
+        using var loading = BeginLoading();
         RemoveFromCore(item);
         await gameSettingService.SaveSettingAsync(coreRoot).ConfigureAwait(true);
         await RefreshCurrentViewAsync().ConfigureAwait(true);
@@ -290,7 +291,8 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
         }
 
         coreRoot = await gameSettingService.LoadSettingAsync().ConfigureAwait(true);
-        var viewRoot = await ItemConversion.ToViewRootAsync(coreRoot, fileService).ConfigureAwait(true);
+        var root = coreRoot;
+        var viewRoot = await Task.Run(() => ItemConversion.ToViewRootAsync(root, fileService)).ConfigureAwait(true);
         history.Clear();
         pageSelections.Clear();
         history.Add(viewRoot);
@@ -421,7 +423,8 @@ public sealed partial class MainViewModel : ViewModelBase, IMainViewDataContext
     private async Task RefreshCurrentViewAsync()
     {
         using var loading = BeginLoading();
-        var viewRoot = await ItemConversion.ToViewRootAsync(coreRoot, fileService).ConfigureAwait(true);
+        var root = coreRoot;
+        var viewRoot = await Task.Run(() => ItemConversion.ToViewRootAsync(root, fileService)).ConfigureAwait(true);
 
         // Preserve the current navigation depth by name so the visible list stays in place.
         var brandName = CurrentItem is Brand brand ? brand.Name : null;

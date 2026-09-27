@@ -252,6 +252,34 @@ public sealed class MainViewModelTests
     }
 
     [Test]
+    public async Task LoadingRemainsVisibleAndItemsAreNotPublishedUntilIconConversionCompletes()
+    {
+        var services = CreateServices(new CoreRootItem([new CoreBrand([]) { Name = "Studio" }]));
+        var conversionStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseConversion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        services.FileService.CreateBitmapAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask<Avalonia.Media.Imaging.Bitmap?>(WaitForConversionAsync()));
+
+        async Task<Avalonia.Media.Imaging.Bitmap?> WaitForConversionAsync()
+        {
+            conversionStarted.SetResult();
+            await releaseConversion.Task;
+            return null;
+        }
+
+        var loadTask = services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+        await conversionStarted.Task;
+        await Assert.That(services.ViewModel.IsLoading).IsTrue();
+        await Assert.That(services.ViewModel.Items).IsEmpty();
+
+        releaseConversion.SetResult();
+        await loadTask;
+
+        await Assert.That(services.ViewModel.IsLoading).IsFalse();
+        await Assert.That(services.ViewModel.Items).Count().IsEqualTo(1);
+    }
+
+    [Test]
     public async Task LoadingRemainsVisibleDuringDelayedAcceptedAddPersistenceAndRefresh()
     {
         var services = CreateServices(new CoreRootItem([]));
@@ -314,6 +342,49 @@ public sealed class MainViewModelTests
 
         await Assert.That(services.ViewModel.IsLoading).IsFalse();
         await Assert.That(services.ViewModel.Items.Single().Name).IsEqualTo("Updated");
+    }
+
+    [Test]
+    public async Task LoadingRemainsVisibleDuringDelayedConfirmedRemoveAndClearsAfterSaveFailure()
+    {
+        var services = CreateServices(new CoreRootItem([new CoreBrand([]) { Name = "Studio" }]));
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        services.Dialogs.ShowConfirmationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(true));
+        services.GameSettings.SaveSettingAsync(Arg.Any<CoreRootItem?>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask(WaitForFailureAsync()));
+
+        async Task WaitForFailureAsync()
+        {
+            started.SetResult();
+            await release.Task;
+            throw new InvalidOperationException("save failed");
+        }
+
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+        var studio = services.ViewModel.Items.Single();
+        var remove = services.ViewModel.RemoveItemAsyncCommand.ExecuteAsync(studio);
+        await started.Task;
+        await Assert.That(services.ViewModel.IsLoading).IsTrue();
+        release.SetResult();
+        await Assert.That(async () => await remove).Throws<InvalidOperationException>();
+        await Assert.That(services.ViewModel.IsLoading).IsFalse();
+    }
+
+    [Test]
+    public async Task CanceledRemoveDoesNotShowLoadingOverlay()
+    {
+        var services = CreateServices(new CoreRootItem([new CoreBrand([]) { Name = "Studio" }]));
+        services.Dialogs.ShowConfirmationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(false));
+        await services.ViewModel.LoadSettingAsyncCommand.ExecuteAsync(null);
+
+        await services.ViewModel.RemoveItemAsyncCommand.ExecuteAsync(services.ViewModel.Items.Single());
+
+        await Assert.That(services.ViewModel.IsLoading).IsFalse();
+        await services.GameSettings.DidNotReceive()
+            .SaveSettingAsync(Arg.Any<CoreRootItem?>(), Arg.Any<CancellationToken>());
     }
 
     private static TestServices CreateServices(CoreRootItem root)
